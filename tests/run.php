@@ -788,6 +788,29 @@ check( 'state same', SD::SAME === SD::state( $fp, $fp ) );
 check( 'state changed', SD::CHANGED === SD::state( $fp, 'x' ) );
 check( 'needs sending', SD::needs_sending( SD::NEW ) && SD::needs_sending( SD::CHANGED ) && ! SD::needs_sending( SD::SAME ) && ! SD::needs_sending( SD::NONE ) );
 
+// --- ManualRegistration ---
+use PadelCamps\Engine\ManualRegistration as MR;
+$ok = MR::validate( array( 'category_id' => '7', 'p1_name' => ' Anna  Puig ', 'p2_name' => 'Pau Roca', 'p1_email' => 'ANNA@x.cat ', 'p2_phone' => '600 11 22 33', 'p1_club' => '<b>CT</b> Vic', 'status' => 'pending', 'payment' => 'paid', 'lang' => 'es', 'rating' => '7,5', 'notes' => "Per telèfon\n<script>x</script>" ), array( 7, 8 ), array( 'ca', 'es', 'en' ) );
+check( 'manual ok', array() === $ok['errors'] );
+check( 'manual clean names', 'Anna Puig' === $ok['clean']['players'][0]['name'] && 'Pau Roca' === $ok['clean']['players'][1]['name'] );
+check( 'manual email lowercased', 'anna@x.cat' === $ok['clean']['players'][0]['email'] && '' === $ok['clean']['players'][1]['email'] );
+check( 'manual phone kept', '600 11 22 33' === $ok['clean']['players'][1]['phone'] );
+check( 'manual club stripped', 'CT Vic' === $ok['clean']['players'][0]['club'] );
+check( 'manual status/payment/lang', 'pending' === $ok['clean']['status'] && 'paid' === $ok['clean']['payment'] && 'es' === $ok['clean']['lang'] );
+check( 'manual rating comma', 7.5 === $ok['clean']['rating'] );
+check( 'manual notes stripped', false === strpos( $ok['clean']['notes'], '<script>' ) );
+check( 'manual player shape for create()', array_key_exists( 'dni', $ok['clean']['players'][0] ) && array() === $ok['clean']['players'][0]['pack'] );
+$bad = MR::validate( array( 'category_id' => '9', 'p1_name' => '', 'p2_name' => 'X', 'p1_email' => 'nope', 'p2_phone' => 'abc', 'status' => 'hacked', 'payment' => 'free', 'lang' => 'fr', 'rating' => 'molt' ), array( 7 ), array( 'ca', 'es' ) );
+check( 'manual category not allowed', 'required' === ( $bad['errors']['category_id'] ?? '' ) );
+check( 'manual name required', 'required' === ( $bad['errors']['p1_name'] ?? '' ) );
+check( 'manual bad email', 'invalid_email' === ( $bad['errors']['p1_email'] ?? '' ) );
+check( 'manual bad phone', 'invalid_phone' === ( $bad['errors']['p2_phone'] ?? '' ) );
+check( 'manual bad rating', 'invalid' === ( $bad['errors']['rating'] ?? '' ) );
+check( 'manual defaults', 'confirmed' === $bad['clean']['status'] && 'pending' === $bad['clean']['payment'] && 'ca' === $bad['clean']['lang'] );
+$same = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_email' => 'a@b.cat', 'p2_email' => 'A@B.cat' ) );
+check( 'manual same email twice', 'same_email' === ( $same['errors']['p2_email'] ?? '' ) );
+check( 'manual no email ok', array() === MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B' ) )['errors'] );
+
 // --- I18n: Catalog::scan_source ---
 use PadelCamps\I18n\Catalog;
 

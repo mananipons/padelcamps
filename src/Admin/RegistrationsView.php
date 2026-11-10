@@ -24,16 +24,19 @@ final class RegistrationsView {
 
 	private RegistrationRepository $regs;
 	private TournamentRepository $tournaments;
+	private RegistrationEditor $editor;
 
 	public function __construct( RegistrationRepository $regs, TournamentRepository $tournaments ) {
 		$this->regs        = $regs;
 		$this->tournaments = $tournaments;
+		$this->editor      = new RegistrationEditor( $regs, $tournaments );
 	}
 
 	public function register(): void {
 		foreach ( array( 'reg_bulk', 'reg_save', 'reg_delete', 'reg_export' ) as $action ) {
 			add_action( 'admin_post_padelcamps_' . $action, array( $this, 'handle_' . $action ) );
 		}
+		$this->editor->register();
 	}
 
 	// --- Labels (literal calls so the translation scanner finds them) -------
@@ -72,27 +75,27 @@ final class RegistrationsView {
 	}
 
 	private static function badge( string $text, string $color ): string {
-		return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:' . esc_attr( $color ) . '">' . esc_html( $text ) . '</span>';
+		return '<span class="pc-badge pc-badge--' . esc_attr( $color ) . '">' . esc_html( $text ) . '</span>';
 	}
 
 	private static function status_badge( string $status ): string {
 		$colors = array(
-			'pending'   => '#fef3c7',
-			'confirmed' => '#dcfce7',
-			'waitlist'  => '#e0e7ff',
-			'cancelled' => '#e5e7eb',
+			'pending'   => 'warn',
+			'confirmed' => 'ok',
+			'waitlist'  => 'info',
+			'cancelled' => 'muted',
 		);
-		return self::badge( self::status_label( $status ), $colors[ $status ] ?? '#f0f0f1' );
+		return self::badge( self::status_label( $status ), $colors[ $status ] ?? 'muted' );
 	}
 
 	private static function payment_badge( string $payment ): string {
 		$colors = array(
-			'pending'  => '#fef3c7',
-			'paid'     => '#dcfce7',
-			'refunded' => '#fee2e2',
-			'free'     => '#e5e7eb',
+			'pending'  => 'warn',
+			'paid'     => 'ok',
+			'refunded' => 'bad',
+			'free'     => 'muted',
 		);
-		return self::badge( self::payment_label( $payment ), $colors[ $payment ] ?? '#f0f0f1' );
+		return self::badge( self::payment_label( $payment ), $colors[ $payment ] ?? 'muted' );
 	}
 
 	private static function money( $amount ): string {
@@ -118,7 +121,7 @@ final class RegistrationsView {
 		return array( 'page' => self::GLOBAL_SLUG );
 	}
 
-	private static function url( int $tournament_id, array $extra = array() ): string {
+	public static function url( int $tournament_id, array $extra = array() ): string {
 		return add_query_arg( array_merge( self::base( $tournament_id ), $extra ), admin_url( 'admin.php' ) );
 	}
 
@@ -160,9 +163,10 @@ final class RegistrationsView {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'No tens permisos per fer això.', 'padelcamps' ) );
 		}
-		echo '<div class="wrap"><h1>' . esc_html__( 'Inscripcions', 'padelcamps' ) . '</h1>';
+		echo '<div class="wrap pc-wrap"><h1>' . esc_html__( 'Inscripcions', 'padelcamps' ) . '</h1>';
+		echo '<div class="pc-panel pc-panel--solo">';
 		$this->render( 0 );
-		echo '</div>';
+		echo '</div></div>';
 	}
 
 	public function render_tournament( array $tournament ): void {
@@ -173,6 +177,10 @@ final class RegistrationsView {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
 		$reg_id = isset( $_GET['reg'] ) ? absint( $_GET['reg'] ) : 0;
 		$this->render_notice();
+		if ( isset( $_GET['reg'] ) && 'new' === $_GET['reg'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$this->editor->render_new( $tid );
+			return;
+		}
 		if ( $reg_id ) {
 			$this->render_detail( $reg_id, $tid );
 			return;
@@ -204,6 +212,12 @@ final class RegistrationsView {
 				break;
 			case 'saved':
 				$text = __( 'Inscripció desada.', 'padelcamps' );
+				break;
+			case 'added':
+				$text = __( 'Inscripció afegida.', 'padelcamps' );
+				break;
+			case 'players_saved':
+				$text = __( 'Dades dels jugadors desades.', 'padelcamps' );
 				break;
 			case 'none_selected':
 				$type = 'error';
@@ -237,6 +251,7 @@ final class RegistrationsView {
 		$rows  = $this->regs->search( $f, self::PER_PAGE, ( $paged - 1 ) * self::PER_PAGE );
 		$plrs  = $this->regs->players_for( wp_list_pluck( $rows, 'id' ) );
 
+		echo '<div class="pc-head"><a class="button button-primary" href="' . esc_url( self::url( $tid, array( 'reg' => 'new' ) ) ) . '">' . esc_html__( 'Afegeix una inscripció', 'padelcamps' ) . '</a></div>';
 		if ( $tid > 0 ) {
 			$this->category_stats_table( $tid );
 		}
@@ -244,7 +259,7 @@ final class RegistrationsView {
 		$this->filter_form( $tid, $f );
 
 		if ( ! $rows ) {
-			echo '<p>' . esc_html__( 'No hi ha cap inscripció que coincideixi amb el filtre.', 'padelcamps' ) . '</p>';
+			echo '<p class="pc-empty">' . esc_html__( 'No hi ha cap inscripció que coincideixi amb el filtre.', 'padelcamps' ) . '</p>';
 			return;
 		}
 
@@ -256,7 +271,7 @@ final class RegistrationsView {
 		}
 		wp_nonce_field( 'padelcamps_reg_bulk' );
 
-		echo '<div style="margin:0.6em 0"><label class="screen-reader-text" for="pc-bulk-action">' . esc_html__( 'Acció en bloc', 'padelcamps' ) . '</label>';
+		echo '<div class="pc-bulk"><label class="screen-reader-text" for="pc-bulk-action">' . esc_html__( 'Acció en bloc', 'padelcamps' ) . '</label>';
 		echo '<select name="bulk" id="pc-bulk-action"><option value="">' . esc_html__( 'Accions en bloc', 'padelcamps' ) . '</option>';
 		foreach ( self::bulk_actions() as $key => $label ) {
 			printf( '<option value="%s">%s</option>', esc_attr( $key ), esc_html( $label ) );
@@ -267,7 +282,7 @@ final class RegistrationsView {
 
 		echo '<table class="wp-list-table widefat fixed striped"><thead><tr>';
 		echo '<td class="manage-column column-cb check-column"><input type="checkbox" id="pc-check-all" aria-label="' . esc_attr__( 'Selecciona-ho tot', 'padelcamps' ) . '"></td>';
-		echo '<th style="width:50px">#</th>';
+		echo '<th class="pc-col-id">#</th>';
 		echo '<th>' . esc_html__( 'Jugadors', 'padelcamps' ) . '</th>';
 		if ( 0 === $tid ) {
 			echo '<th>' . esc_html__( 'Torneig', 'padelcamps' ) . '</th>';
@@ -287,7 +302,7 @@ final class RegistrationsView {
 			echo '<td>' . esc_html( (string) $id ) . '</td>';
 			echo '<td><strong><a href="' . esc_url( $detail ) . '">';
 			echo esc_html( implode( ' + ', wp_list_pluck( $players, 'name' ) ) ?: $row['contact_name'] );
-			echo '</a></strong><br><span style="color:#646970">' . esc_html( (string) $row['contact_email'] ) . '</span></td>';
+			echo '</a></strong><br><span class="pc-muted">' . esc_html( (string) $row['contact_email'] ) . '</span></td>';
 			if ( 0 === $tid ) {
 				echo '<td>' . esc_html( $row['tournament_name'] ) . '</td>';
 			}
@@ -326,8 +341,8 @@ final class RegistrationsView {
 		if ( ! $stats ) {
 			return;
 		}
-		echo '<h2>' . esc_html__( 'Ocupació per categoria', 'padelcamps' ) . '</h2>';
-		echo '<table class="widefat striped" style="max-width:560px"><thead><tr><th>' . esc_html__( 'Categoria', 'padelcamps' ) . '</th><th>' . esc_html__( 'Places ocupades', 'padelcamps' ) . '</th><th>' . esc_html__( 'Llista d’espera', 'padelcamps' ) . '</th></tr></thead><tbody>';
+		echo '<h2 class="pc-h2-first">' . esc_html__( 'Ocupació per categoria', 'padelcamps' ) . '</h2>';
+		echo '<table class="widefat striped pc-narrow"><thead><tr><th>' . esc_html__( 'Categoria', 'padelcamps' ) . '</th><th>' . esc_html__( 'Places ocupades', 'padelcamps' ) . '</th><th>' . esc_html__( 'Llista d’espera', 'padelcamps' ) . '</th></tr></thead><tbody>';
 		foreach ( $stats as $s ) {
 			$max = null === $s['max_teams'] ? '∞' : (string) (int) $s['max_teams'];
 			echo '<tr><td>' . esc_html( $s['name'] ) . '</td><td>' . esc_html( (int) $s['occupied'] . ' / ' . $max ) . '</td><td>' . esc_html( (string) (int) $s['waitlist'] ) . '</td></tr>';
@@ -347,11 +362,11 @@ final class RegistrationsView {
 		);
 		/* translators: 1: amount collected, 2: amount still to collect */
 		$money = sprintf( __( 'Cobrat: %1$s · Pendent de cobrar: %2$s', 'padelcamps' ), self::money( $s['paid_total'] ), self::money( $s['due_total'] ) );
-		echo '<p style="margin:1em 0 0.4em"><strong>' . esc_html( $counts ) . '</strong><br>' . esc_html( $money ) . '</p>';
+		echo '<div class="pc-summary"><strong>' . esc_html( $counts ) . '</strong><span>' . esc_html( $money ) . '</span></div>';
 	}
 
 	private function filter_form( int $tid, array $f ): void {
-		echo '<form method="get" style="margin:0.8em 0">';
+		echo '<form method="get" class="pc-toolbar">';
 		foreach ( self::base( $tid ) as $key => $value ) {
 			echo '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( (string) $value ) . '">';
 		}
@@ -398,7 +413,7 @@ final class RegistrationsView {
 			),
 			'padelcamps_reg_export'
 		);
-		echo '<a class="button" href="' . esc_url( $export ) . '">' . esc_html__( 'Exporta a CSV', 'padelcamps' ) . '</a>';
+		echo '<a class="button pc-toolbar__end" href="' . esc_url( $export ) . '">' . esc_html__( 'Exporta a CSV', 'padelcamps' ) . '</a>';
 		echo '</form>';
 	}
 
@@ -419,7 +434,7 @@ final class RegistrationsView {
 		/* translators: %d: registration number */
 		echo '<h2>' . esc_html( sprintf( __( 'Inscripció #%d', 'padelcamps' ), $id ) ) . ' ' . self::status_badge( $r['status'] ) . ' ' . self::payment_badge( $r['payment_status'] ) . '</h2>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
-		echo '<table class="widefat striped" style="max-width:760px"><tbody>';
+		echo '<table class="widefat striped pc-narrow pc-narrow--wide"><tbody>';
 		$this->kv( __( 'Torneig', 'padelcamps' ), $r['tournament_name'] );
 		$this->kv( __( 'Categoria', 'padelcamps' ), $r['category_name'] );
 		$this->kv( __( 'Data d’inscripció', 'padelcamps' ), self::when( $r['created_at'] ) );
@@ -430,10 +445,11 @@ final class RegistrationsView {
 		if ( ! empty( $a['locale'] ) ) {
 			$this->kv( __( 'Idioma', 'padelcamps' ), (string) $a['locale'] );
 		}
+		$this->kv( __( 'Origen', 'padelcamps' ), 'admin' === ( $a['source'] ?? '' ) ? __( 'Afegida per l’organització', 'padelcamps' ) : __( 'Formulari públic', 'padelcamps' ) );
 		echo '</tbody></table>';
 
 		echo '<h3>' . esc_html__( 'Jugadors', 'padelcamps' ) . '</h3>';
-		echo '<table class="widefat striped" style="max-width:760px"><thead><tr><th></th>';
+		echo '<table class="widefat striped pc-narrow pc-narrow--wide"><thead><tr><th></th>';
 		foreach ( $r['players'] as $i => $p ) {
 			echo '<th>' . esc_html( sprintf( __( 'Jugador/a %d', 'padelcamps' ), $i + 1 ) ) . '</th>';
 		}
@@ -472,9 +488,10 @@ final class RegistrationsView {
 			echo '<td>' . ( $lines ? implode( '<br>', $lines ) : '—' ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped above.
 		}
 		echo '</tr></tbody></table>';
+		$this->editor->render_players_form( $r, $tid );
 
 		if ( ! empty( $a['availability'] ) && is_array( $a['availability'] ) ) {
-			echo '<h3>' . esc_html__( 'Disponibilitat', 'padelcamps' ) . '</h3><table class="widefat striped" style="max-width:760px"><tbody>';
+			echo '<h3>' . esc_html__( 'Disponibilitat', 'padelcamps' ) . '</h3><table class="widefat striped pc-narrow pc-narrow--wide"><tbody>';
 			foreach ( $a['availability'] as $slot ) {
 				$title = (string) ( $slot['date'] ?? '' );
 				if ( ! empty( $slot['label'] ) ) {
@@ -506,7 +523,7 @@ final class RegistrationsView {
 	}
 
 	private function kv( string $label, string $value ): void {
-		echo '<tr><th scope="row" style="width:220px">' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
+		echo '<tr><th scope="row" class="pc-key">' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
 	}
 
 	private function detail_form( array $r, int $tid ): void {
@@ -557,7 +574,7 @@ final class RegistrationsView {
 
 	/** "Email the players" checkbox next to status/payment actions (on by default). */
 	private static function notify_checkbox(): void {
-		echo '<label style="margin-left:8px"><input type="checkbox" name="notify" value="1" checked> ' . esc_html__( 'Avisa els jugadors per correu', 'padelcamps' ) . '</label>';
+		echo '<label class="pc-notify"><input type="checkbox" name="notify" value="1" checked> ' . esc_html__( 'Avisa els jugadors per correu', 'padelcamps' ) . '</label>';
 		echo ' <span class="description">' . esc_html__( '(confirmació, llista d’espera, cancel·lació i pagament rebut, segons la pestanya Comunicació del torneig)', 'padelcamps' ) . '</span>';
 	}
 

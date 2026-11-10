@@ -89,8 +89,12 @@ final class RegistrationRepository {
 		$occupied = (int) $wpdb->get_var(
 			$wpdb->prepare( "SELECT COUNT(*) FROM {$r} WHERE category_id = %d AND status IN ('pending','confirmed')", (int) $category['id'] )
 		);
-		$status   = RegistrationForm::initial_status( null === $category['max_teams'] ? null : (int) $category['max_teams'], $occupied );
+		// The organizer (manual registration) chooses the status; the public form gets pending or waitlist.
+		$status   = isset( $data['status'] ) && RegistrationStatus::is_valid( $data['status'] )
+			? $data['status']
+			: RegistrationForm::initial_status( null === $category['max_teams'] ? null : (int) $category['max_teams'], $occupied );
 		$amount   = (float) $category['price'];
+		$payment  = $amount > 0 ? ( isset( $data['payment_status'] ) && RegistrationStatus::PAYMENT_PAID === $data['payment_status'] ? RegistrationStatus::PAYMENT_PAID : 'pending' ) : 'free';
 		$p1       = $data['players'][0];
 
 		$answers = array(
@@ -107,17 +111,23 @@ final class RegistrationRepository {
 			'consented_at' => current_time( 'mysql' ),
 			'locale'       => $data['locale'],
 		);
+		if ( ! empty( $data['source'] ) ) {
+			$answers['source'] = (string) $data['source']; // 'admin' = entered by the organizer.
+		}
 
 		$inserted = $wpdb->insert(
 			$r,
 			array(
 				'category_id'    => (int) $category['id'],
 				'status'         => $status,
-				'payment_status' => $amount > 0 ? 'pending' : 'free',
+				'payment_status' => $payment,
+				'paid_at'        => RegistrationStatus::PAYMENT_PAID === $payment ? current_time( 'mysql' ) : null,
 				'amount'         => $amount,
 				'contact_name'   => $p1['name'],
 				'contact_email'  => $p1['email'],
 				'contact_phone'  => $p1['phone'],
+				'rating'         => $data['rating'] ?? null,
+				'notes'          => $data['org_notes'] ?? null,
 				'answers'        => wp_json_encode( $answers ),
 				'created_at'     => current_time( 'mysql' ),
 			)
@@ -409,6 +419,56 @@ final class RegistrationRepository {
 		}
 		$wpdb->query( 'COMMIT' );
 		return $deleted;
+	}
+
+	/**
+	 * Organizer edits the players of a registration (name, email, phone, club).
+	 * The contact data of the registration follows player 1.
+	 *
+	 * @param array<int, array{name:string, email:string, phone:string, club:string}> $players by position (0 = player 1)
+	 */
+	public function update_players( int $registration_id, array $players ): void {
+		global $wpdb;
+		$rp  = self::t( 'registration_players' );
+		$p   = self::t( 'players' );
+		$ids = $wpdb->get_results( $wpdb->prepare( "SELECT player_id, position FROM {$rp} WHERE registration_id = %d ORDER BY position", $registration_id ), ARRAY_A ) ?: array();
+		foreach ( $ids as $row ) {
+			$player = $players[ (int) $row['position'] - 1 ] ?? null;
+			if ( ! $player ) {
+				continue;
+			}
+			$wpdb->update(
+				$p,
+				array(
+					'name'  => $player['name'],
+					'email' => $player['email'],
+					'phone' => '' !== $player['phone'] ? $player['phone'] : null,
+					'club'  => '' !== $player['club'] ? $player['club'] : null,
+				),
+				array( 'id' => (int) $row['player_id'] )
+			);
+		}
+		$wpdb->update(
+			self::t( 'registrations' ),
+			array(
+				'contact_name'  => $players[0]['name'],
+				'contact_email' => $players[0]['email'],
+				'contact_phone' => $players[0]['phone'],
+			),
+			array( 'id' => $registration_id )
+		);
+	}
+
+	/** Other registrations (not this one) that share a player row with it, to warn before editing. */
+	public function shared_player_registrations( int $registration_id ): int {
+		global $wpdb;
+		$rp = self::t( 'registration_players' );
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT o.registration_id) FROM {$rp} me INNER JOIN {$rp} o ON o.player_id = me.player_id AND o.registration_id <> me.registration_id WHERE me.registration_id = %d",
+				$registration_id
+			)
+		);
 	}
 
 	/**

@@ -40,6 +40,7 @@ PadelCamps cobreix tot el cicle d'un torneig de pàdel dins la web WordPress del
 |---|---|
 | 📝 **Inscripcions** | Formulari públic configurable per torneig, welcome pack lliure, disponibilitat per franges, consentiments, llista d'espera automàtica i antispam |
 | 🗂️ **Gestió** | Llista amb filtres, accions en bloc, control de pagaments, detall per parella i exportació **CSV** |
+| ✍️ **Inscripció manual** | L'organitzador dona d'alta parelles des de l'admin (telèfon, WhatsApp, al club) triant estat, pagament i idioma dels correus, i edita les dades dels jugadors |
 | 🎲 **Sorteig** | Per llavor, caps de sèrie, grups per bombos, separació de parelles del mateix club, registre d'auditoria (`draw_log`) |
 | 🧩 **Formats** | Fase de grups + eliminatòria, tots contra tots, eliminatòria directa, quadre de consolació |
 | 🏟️ **Calendari i pistes** | Planificador de pistes × franges amb durada, descans mínim, disponibilitat i detecció de conflictes |
@@ -70,7 +71,7 @@ En activar-lo es crea el *schema* de la base de dades (`dbDelta`) i apareix el m
 
 1. **PadelCamps → Tornejos** → crea un torneig i les seves categories (tria la plantilla de format).
 2. Configura i publica el **Formulari** d'inscripció amb `[padelcamps_registration id="N"]`.
-3. Confirma les inscripcions i fes el **Sorteig i quadres** de cada categoria.
+3. Confirma les inscripcions (o afegeix-ne a mà amb **Afegeix una inscripció**) i fes el **Sorteig i quadres** de cada categoria.
 4. Defineix pistes i franges a **Calendari i pistes** i programa els partits.
 5. Comparteix els enllaços de **Resultats** amb les parelles i mostra el quadre a la web.
 
@@ -174,9 +175,11 @@ Des de l'admin, **PadelCamps → Traduccions** permet editar qualsevol cadena pe
 - [x] Resultats per *magic link*
 - [x] Part pública en directe, TV i blocs
 - [x] Comunicació per correu
+- [x] Inscripció manual des de l'admin i edició de jugadors
 - [ ] Tauler real i bloqueig de transicions d'estat
 - [ ] Pàgina **Jugadors** (base de dades reutilitzable)
-- [ ] Cua d'enviament de correus (Action Scheduler)
+- [ ] Comunicació: cua d'enviament (Action Scheduler), correus en HTML, plantilles per torneig, recordatori el dia abans
+- [ ] Inscripció manual: canviar la categoria d'una inscripció, DNI / welcome pack / disponibilitat
 - [ ] **Fase 2:** americana, canvis de partit, recordatoris, pagament (Redsys)
 - [ ] **Fase 3:** IA assistent, WhatsApp, circuits amb rànquing, SaaS multi-club
 

@@ -48,7 +48,7 @@ final class RegistrationShortcode {
 		return $texts[ $key ] ?? '';
 	}
 
-	private static function error_message( string $code ): string {
+	public static function error_message( string $code ): string {
 		$messages = array(
 			'required'       => __( 'Aquest camp és obligatori.', 'padelcamps' ),
 			'invalid'        => __( 'El valor introduït no és vàlid.', 'padelcamps' ),

@@ -676,4 +676,22 @@ return array(
 	'novembre' => 'November',
 	'desembre' => 'December',
 	'%1$s %2$d %3$s' => '%1$s %2$d %3$s',
+
+	// Manual registrations and player edits (admin).
+	'Afegeix una inscripció' => 'Add a registration',
+	'Per a parelles que s’inscriuen per telèfon, WhatsApp o al club. Només calen els noms; el correu serveix per enviar-los els avisos i els horaris.' => 'For pairs who register by phone, WhatsApp or at the club. Only the names are needed; the email is used to send them notices and times.',
+	'Primer cal crear alguna categoria a la pestanya Configuració.' => 'First create a category in the Setup tab.',
+	'Si la categoria ja és plena, t’avisarem, però la inscripció es desa igualment.' => 'If the category is already full you will be warned, but the registration is saved anyway.',
+	'Només compta si la categoria té preu.' => 'Only applies if the category has a price.',
+	'Idioma dels correus' => 'Email language',
+	'Afegeix la inscripció' => 'Add the registration',
+	'(si està confirmada o a la llista d’espera i tenen correu)' => '(if confirmed or on the waiting list and they have an email)',
+	'Edita les dades dels jugadors' => 'Edit the players’ details',
+	'Algun d’aquests jugadors també és en %d inscripció més: els canvis s’hi veuran també.' => array( 'One of these players is also in %d other registration: the changes will show there too.', 'One of these players is also in %d other registrations: the changes will show there too.' ),
+	'Desa els jugadors' => 'Save the players',
+	'Inscripció afegida.' => 'Registration added.',
+	'Dades dels jugadors desades.' => 'Player details saved.',
+	'Origen' => 'Source',
+	'Afegida per l’organització' => 'Added by the organizer',
+	'Formulari públic' => 'Public form',
 );

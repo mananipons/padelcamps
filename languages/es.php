@@ -676,4 +676,22 @@ return array(
 	'novembre' => 'noviembre',
 	'desembre' => 'diciembre',
 	'%1$s %2$d %3$s' => '%1$s %2$d de %3$s',
+
+	// Manual registrations and player edits (admin).
+	'Afegeix una inscripció' => 'Añadir una inscripción',
+	'Per a parelles que s’inscriuen per telèfon, WhatsApp o al club. Només calen els noms; el correu serveix per enviar-los els avisos i els horaris.' => 'Para parejas que se inscriben por teléfono, WhatsApp o en el club. Solo hacen falta los nombres; el correo sirve para enviarles los avisos y los horarios.',
+	'Primer cal crear alguna categoria a la pestanya Configuració.' => 'Primero hay que crear alguna categoría en la pestaña Configuración.',
+	'Si la categoria ja és plena, t’avisarem, però la inscripció es desa igualment.' => 'Si la categoría ya está llena, te avisaremos, pero la inscripción se guarda igualmente.',
+	'Només compta si la categoria té preu.' => 'Solo cuenta si la categoría tiene precio.',
+	'Idioma dels correus' => 'Idioma de los correos',
+	'Afegeix la inscripció' => 'Añadir la inscripción',
+	'(si està confirmada o a la llista d’espera i tenen correu)' => '(si está confirmada o en la lista de espera y tienen correo)',
+	'Edita les dades dels jugadors' => 'Editar los datos de los jugadores',
+	'Algun d’aquests jugadors també és en %d inscripció més: els canvis s’hi veuran també.' => array( 'Alguno de estos jugadores también está en %d inscripción más: los cambios también se verán allí.', 'Alguno de estos jugadores también está en %d inscripciones más: los cambios también se verán allí.' ),
+	'Desa els jugadors' => 'Guardar los jugadores',
+	'Inscripció afegida.' => 'Inscripción añadida.',
+	'Dades dels jugadors desades.' => 'Datos de los jugadores guardados.',
+	'Origen' => 'Origen',
+	'Afegida per l’organització' => 'Añadida por la organización',
+	'Formulari públic' => 'Formulario público',
 );
