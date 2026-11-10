@@ -38,6 +38,8 @@ PadelCamps cobreix tot el cicle d'un torneig de pàdel dins la web WordPress del
 
 | Àrea | Què fa |
 |---|---|
+| 📊 **Tauler** | Torneig actiu amb les xifres clau en gran (parelles, jugadors, cobrat, partits jugats i d'avui, resultats per revisar, correus), llista de feines pendents, progrés per categoria i totals de tots els tornejos |
+| 🏷️ **Tornejos i categories** | Espai de treball per torneig amb pestanyes, **edició en bloc** de categories (consolació, classificats, format dels partits, desempats, places, preu) i eliminació completa d'un torneig amb confirmació |
 | 📝 **Inscripcions** | Formulari públic configurable per torneig, welcome pack lliure, disponibilitat per franges, consentiments, llista d'espera automàtica i antispam |
 | 🗂️ **Gestió** | Llista amb filtres, accions en bloc, control de pagaments, detall per parella i exportació **CSV** |
 | ✍️ **Inscripció manual** | L'organitzador dona d'alta parelles des de l'admin (telèfon, WhatsApp, al club) triant estat, pagament i idioma dels correus, i edita les dades dels jugadors |
@@ -74,6 +76,9 @@ En activar-lo es crea el *schema* de la base de dades (`dbDelta`) i apareix el m
 3. Confirma les inscripcions (o afegeix-ne a mà amb **Afegeix una inscripció**) i fes el **Sorteig i quadres** de cada categoria.
 4. Defineix pistes i franges a **Calendari i pistes** i programa els partits.
 5. Comparteix els enllaços de **Resultats** amb les parelles i mostra el quadre a la web.
+6. Segueix-ho tot des del **Tauler** (PadelCamps → Tauler).
+
+Per aplicar el mateix canvi a diverses categories (p. ex. afegir quadre de consolació a totes), marca-les a **Configuració** i fes servir **Edita en bloc les categories seleccionades**. Per eliminar un torneig amb totes les seves dades: **Resum → Zona de perill** (cal escriure el nom del torneig per confirmar).
 
 Cicle de vida d'un torneig:
 
@@ -176,8 +181,12 @@ Des de l'admin, **PadelCamps → Traduccions** permet editar qualsevol cadena pe
 - [x] Part pública en directe, TV i blocs
 - [x] Comunicació per correu
 - [x] Inscripció manual des de l'admin i edició de jugadors
-- [ ] Tauler real i bloqueig de transicions d'estat
-- [ ] Pàgina **Jugadors** (base de dades reutilitzable)
+- [x] Edició en bloc de categories i eliminació completa de tornejos
+- [x] Tauler amb el torneig actiu i estadístiques
+- [ ] Bloqueig de transicions d'estat segons el sorteig i els partits
+- [x] Admin amb full d'estils propi (caixes amb padding, cantonades de 6px com a màxim)
+- [ ] Pàgina **Jugadors** (base de dades reutilitzable, historial, fusió de duplicats) i **rànquing de temporada** entre tornejos (per jugador; cal decidir punts i què és una temporada)
+- [ ] Pàgina **Clubs** (clubs reutilitzables; ara placeholder al menú)
 - [ ] Comunicació: cua d'enviament (Action Scheduler), correus en HTML, plantilles per torneig, recordatori el dia abans
 - [ ] Inscripció manual: canviar la categoria d'una inscripció, DNI / welcome pack / disponibilitat
 - [ ] **Fase 2:** americana, canvis de partit, recordatoris, pagament (Redsys)

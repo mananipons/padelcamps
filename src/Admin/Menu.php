@@ -1,6 +1,8 @@
 <?php
 namespace PadelCamps\Admin;
 
+use PadelCamps\Db\TournamentRepository;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -64,6 +66,7 @@ final class Menu {
 
 		$placeholders = array(
 			'padelcamps-players'  => __( 'Jugadors', 'padelcamps' ),
+			'padelcamps-clubs'    => __( 'Clubs', 'padelcamps' ),
 			'padelcamps-settings' => __( 'Ajustaments', 'padelcamps' ),
 		);
 		foreach ( $placeholders as $slug => $title ) {
@@ -81,18 +84,14 @@ final class Menu {
 	}
 
 	public function render_dashboard(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-		echo '<div class="wrap"><h1>' . esc_html__( 'PadelCamps', 'padelcamps' ) . '</h1>';
-		echo '<p>' . esc_html__( 'La gestió de tornejos arribarà aviat.', 'padelcamps' ) . '</p></div>';
+		( new Dashboard( new TournamentRepository() ) )->render();
 	}
 
 	private function render_coming_soon( string $title ): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		echo '<div class="wrap"><h1>' . esc_html( $title ) . '</h1>';
-		echo '<p>' . esc_html__( 'Aquesta secció arribarà aviat.', 'padelcamps' ) . '</p></div>';
+		echo '<div class="wrap pc-wrap"><h1>' . esc_html( $title ) . '</h1><div class="pc-panel pc-panel--solo">';
+		echo '<p>' . esc_html__( 'Aquesta secció arribarà aviat.', 'padelcamps' ) . '</p></div></div>';
 	}
 }

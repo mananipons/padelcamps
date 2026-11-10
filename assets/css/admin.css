@@ -13,15 +13,15 @@
 	--pc-surface-alt: #f6f7f7;
 	--pc-text: #1d2327;
 	--pc-muted: #646970;
-	--pc-radius: 10px;
+	--pc-radius: 6px;
 	--pc-control-h: 36px;
 	--pc-pad: 28px;
 }
 
 /* ---------- Page header ---------------------------------------------------- */
 
-.padelcamps-admin .pc-wrap > h1,
-.padelcamps-admin .pc-wrap > h1.wp-heading-inline {
+.padelcamps-admin .pc-wrap>h1,
+.padelcamps-admin .pc-wrap>h1.wp-heading-inline {
 	display: inline-flex;
 	align-items: center;
 	flex-wrap: wrap;
@@ -62,7 +62,7 @@
 	padding: 11px 18px;
 	border: 1px solid var(--pc-border);
 	border-bottom: 0;
-	border-radius: 8px 8px 0 0;
+	border-radius: var(--pc-radius) var(--pc-radius) 0 0;
 	background: #eceef0;
 	color: var(--pc-muted);
 	font-size: 13px;
@@ -107,13 +107,13 @@
 	border-radius: var(--pc-radius);
 }
 
-.padelcamps-admin .pc-panel > :first-child,
-.padelcamps-admin .pc-panel > .pc-h2-first,
+.padelcamps-admin .pc-panel> :first-child,
+.padelcamps-admin .pc-panel>.pc-h2-first,
 .padelcamps-admin .pc-panel h2:first-child {
 	margin-top: 0;
 }
 
-.padelcamps-admin .pc-panel > :last-child {
+.padelcamps-admin .pc-panel> :last-child {
 	margin-bottom: 0;
 }
 
@@ -150,17 +150,17 @@
 	font-size: 14px;
 }
 
-.padelcamps-admin .pc-back + .notice,
-.padelcamps-admin .pc-wrap > .notice {
+.padelcamps-admin .pc-back+.notice,
+.padelcamps-admin .pc-wrap>.notice {
 	max-width: 1280px;
 	box-sizing: border-box;
 	margin: 0 0 14px;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 }
 
 .padelcamps-admin .pc-panel .notice {
 	margin: 0 0 18px;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 }
 
 /* ---------- Form controls -------------------------------------------------- */
@@ -181,7 +181,7 @@
 	padding-top: 0;
 	padding-bottom: 0;
 	border-color: #8c8f94;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 	font-size: 14px;
 	line-height: 2.4;
 }
@@ -195,7 +195,7 @@
 	box-sizing: border-box;
 	padding: 8px 12px;
 	border-color: #8c8f94;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 	font-size: 14px;
 	line-height: 1.5;
 }
@@ -218,7 +218,7 @@
 	justify-content: center;
 	min-height: var(--pc-control-h);
 	padding: 0 16px;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 	font-size: 13px;
 	line-height: 1.2;
 }
@@ -245,19 +245,19 @@
 	max-width: 1000px;
 }
 
-.padelcamps-admin .pc-panel .form-table > tbody > tr > th {
+.padelcamps-admin .pc-panel .form-table>tbody>tr>th {
 	width: 200px;
 	padding: 20px 24px 20px 0;
 	font-weight: 600;
 	vertical-align: top;
 }
 
-.padelcamps-admin .pc-panel .form-table > tbody > tr > td {
+.padelcamps-admin .pc-panel .form-table>tbody>tr>td {
 	padding: 14px 0;
 	vertical-align: top;
 }
 
-.padelcamps-admin .pc-panel .form-table td > .description:first-child {
+.padelcamps-admin .pc-panel .form-table td>.description:first-child {
 	margin-top: 0;
 }
 
@@ -265,8 +265,8 @@
 	margin: 6px 0 0;
 }
 
-.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > th,
-.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > td {
+.padelcamps-admin .pc-panel .form-table>tbody>tr+tr>th,
+.padelcamps-admin .pc-panel .form-table>tbody>tr+tr>td {
 	border-top: 1px solid var(--pc-border-soft);
 }
 
@@ -291,7 +291,7 @@
 	gap: 8px;
 }
 
-.padelcamps-admin .pc-panel > form > p:last-child,
+.padelcamps-admin .pc-panel>form>p:last-child,
 .padelcamps-admin .pc-submit {
 	display: flex;
 	flex-wrap: wrap;
@@ -339,7 +339,7 @@
 	padding: 12px 16px;
 	border: 1px solid var(--pc-border-soft);
 	border-left: 3px solid var(--pc-accent);
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 	background: var(--pc-surface-alt);
 	font-size: 13px;
 }
@@ -377,7 +377,7 @@
 	gap: 8px;
 	margin: 0 0 12px;
 	padding: 10px 12px;
-	border-radius: 6px;
+	border-radius: var(--pc-radius);
 	background: var(--pc-surface-alt);
 }
 
@@ -389,7 +389,7 @@
 .padelcamps-admin .pc-empty {
 	padding: 36px 16px;
 	border: 1px dashed var(--pc-border);
-	border-radius: 8px;
+	border-radius: var(--pc-radius);
 	background: var(--pc-surface-alt);
 	color: var(--pc-muted);
 	text-align: center;
@@ -401,7 +401,7 @@
 	border: 1px solid var(--pc-border);
 	border-collapse: separate;
 	border-spacing: 0;
-	border-radius: 8px;
+	border-radius: var(--pc-radius);
 	box-shadow: none;
 	overflow: hidden;
 }
@@ -424,15 +424,15 @@
 	vertical-align: middle;
 }
 
-.padelcamps-admin .pc-panel table.widefat tbody tr:last-child > * {
+.padelcamps-admin .pc-panel table.widefat tbody tr:last-child>* {
 	border-bottom: 0;
 }
 
-.padelcamps-admin .pc-panel table.widefat.striped > tbody > :nth-child(odd) {
+.padelcamps-admin .pc-panel table.widefat.striped>tbody> :nth-child(odd) {
 	background-color: #fafafa;
 }
 
-.padelcamps-admin .pc-panel table.widefat tbody tr:hover > * {
+.padelcamps-admin .pc-panel table.widefat tbody tr:hover>* {
 	background-color: #f3f6ff;
 }
 
@@ -481,11 +481,11 @@
 	vertical-align: top;
 }
 
-.padelcamps-admin .pc-players tbody tr:hover > * {
+.padelcamps-admin .pc-players tbody tr:hover>* {
 	background-color: transparent;
 }
 
-.padelcamps-admin .pc-players tbody tr:hover > th {
+.padelcamps-admin .pc-players tbody tr:hover>th {
 	background-color: var(--pc-surface-alt);
 }
 
@@ -504,12 +504,12 @@
 	margin: 18px 0;
 }
 
-.padelcamps-admin .pc-details > summary {
+.padelcamps-admin .pc-details>summary {
 	display: inline-flex;
 	cursor: pointer;
 }
 
-.padelcamps-admin .pc-details > form {
+.padelcamps-admin .pc-details>form {
 	margin-top: 14px;
 }
 
@@ -518,7 +518,7 @@
 .padelcamps-admin .pc-badge {
 	display: inline-block;
 	padding: 3px 10px;
-	border-radius: 999px;
+	border-radius: var(--pc-radius);
 	background: #f0f0f1;
 	color: #3c434a;
 	font-size: 12px;
@@ -558,7 +558,7 @@
 	color: #374151;
 }
 
-.padelcamps-admin .pc-wrap > h1 .pc-badge {
+.padelcamps-admin .pc-wrap>h1 .pc-badge {
 	font-size: 12px;
 	font-weight: 500;
 	vertical-align: middle;
@@ -581,18 +581,18 @@
 		white-space: nowrap;
 	}
 
-	.padelcamps-admin .pc-panel .form-table > tbody > tr > th,
-	.padelcamps-admin .pc-panel .form-table > tbody > tr > td {
+	.padelcamps-admin .pc-panel .form-table>tbody>tr>th,
+	.padelcamps-admin .pc-panel .form-table>tbody>tr>td {
 		display: block;
 		width: auto;
 		padding-right: 0;
 	}
 
-	.padelcamps-admin .pc-panel .form-table > tbody > tr > th {
+	.padelcamps-admin .pc-panel .form-table>tbody>tr>th {
 		padding-bottom: 0;
 	}
 
-	.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > td {
+	.padelcamps-admin .pc-panel .form-table>tbody>tr+tr>td {
 		border-top: 0;
 	}
 
@@ -612,5 +612,220 @@
 
 	.padelcamps-admin .pc-players input {
 		min-width: 150px;
+	}
+}
+/* ---------- Bulk edit of categories --------------------------------------- */
+
+.padelcamps-admin .pc-bulk-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-width: 100%;
+}
+
+.padelcamps-admin .pc-bulk-field > span {
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.padelcamps-admin .pc-bulk-field select {
+	max-width: 340px;
+}
+
+/* ---------- Destructive action ------------------------------------------- */
+
+.padelcamps-admin .button.pc-danger,
+.padelcamps-admin .button.pc-danger:focus {
+	background: #b32d2e;
+	border-color: #b32d2e;
+	color: #fff;
+}
+
+.padelcamps-admin .button.pc-danger:hover {
+	background: #8a2424;
+	border-color: #8a2424;
+	color: #fff;
+}
+
+/* ---------- Dashboard ------------------------------------------------------ */
+
+.padelcamps-admin .pc-dash-switch {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 0 16px;
+}
+
+.padelcamps-admin .pc-hero {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px 24px;
+	margin: 0 0 20px;
+	padding: 24px var(--pc-pad);
+	background: var(--pc-surface);
+	border: 1px solid var(--pc-border);
+	border-left: 4px solid var(--pc-accent);
+	border-radius: var(--pc-radius);
+}
+
+.padelcamps-admin .pc-hero__eyebrow {
+	margin: 0 0 4px;
+	color: var(--pc-muted);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.padelcamps-admin .pc-hero__title {
+	margin: 0;
+	font-size: 28px;
+	line-height: 1.2;
+}
+
+.padelcamps-admin .pc-hero__meta {
+	margin: 6px 0 0;
+	color: var(--pc-muted);
+}
+
+.padelcamps-admin .pc-hero__side {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+}
+
+.padelcamps-admin .pc-hero__count {
+	font-size: 20px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.padelcamps-admin .pc-kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 14px;
+	margin: 0 0 24px;
+}
+
+.padelcamps-admin .pc-kpi {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 18px 20px;
+	background: var(--pc-surface);
+	border: 1px solid var(--pc-border);
+	border-radius: var(--pc-radius);
+	color: var(--pc-text);
+	text-decoration: none;
+}
+
+.padelcamps-admin a.pc-kpi:hover,
+.padelcamps-admin a.pc-kpi:focus {
+	border-color: var(--pc-accent);
+	box-shadow: 0 0 0 1px var(--pc-accent);
+	color: var(--pc-text);
+}
+
+.padelcamps-admin .pc-kpi__label {
+	color: var(--pc-muted);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.padelcamps-admin .pc-kpi__value {
+	font-size: 40px;
+	font-weight: 700;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.padelcamps-admin .pc-kpis--sm .pc-kpi__value {
+	font-size: 28px;
+}
+
+.padelcamps-admin .pc-kpi__sub {
+	color: var(--pc-muted);
+	font-size: 13px;
+}
+
+.padelcamps-admin .pc-kpi--warn .pc-kpi__value {
+	color: #996800;
+}
+
+.padelcamps-admin .pc-kpi--alert .pc-kpi__value {
+	color: #b32d2e;
+}
+
+.padelcamps-admin .pc-bar {
+	display: block;
+	height: 6px;
+	margin-top: 8px;
+	background: var(--pc-surface-alt);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.padelcamps-admin .pc-bar > span {
+	display: block;
+	height: 100%;
+	background: var(--pc-accent);
+}
+
+.padelcamps-admin .pc-bar--sm {
+	height: 4px;
+	margin-top: 4px;
+	max-width: 140px;
+}
+
+.padelcamps-admin .pc-dash-block {
+	margin: 0 0 24px;
+}
+
+.padelcamps-admin .pc-dash-block > h2 {
+	margin: 0 0 10px;
+	font-size: 16px;
+}
+
+.padelcamps-admin .pc-todo {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	background: var(--pc-surface);
+	border: 1px solid var(--pc-border);
+	border-radius: var(--pc-radius);
+}
+
+.padelcamps-admin .pc-todo li {
+	margin: 0;
+	border-top: 1px solid var(--pc-border-soft);
+}
+
+.padelcamps-admin .pc-todo li:first-child {
+	border-top: 0;
+}
+
+.padelcamps-admin .pc-todo a {
+	display: block;
+	padding: 12px 16px;
+	text-decoration: none;
+}
+
+.padelcamps-admin .pc-todo a::after {
+	content: " →";
+}
+
+.padelcamps-admin .pc-dash-table {
+	max-width: 1000px;
+}
+
+@media (max-width: 782px) {
+	.padelcamps-admin .pc-hero__side {
+		align-items: flex-start;
+	}
+	.padelcamps-admin .pc-kpi__value {
+		font-size: 32px;
 	}
 }

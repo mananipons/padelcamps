@@ -2,6 +2,7 @@
 namespace PadelCamps\Admin;
 
 use PadelCamps\Db\TournamentRepository;
+use PadelCamps\Engine\CategoryBulk;
 use PadelCamps\Engine\FormatTemplates;
 use PadelCamps\Engine\MatchFormat;
 use PadelCamps\Engine\TournamentStatus;
@@ -41,7 +42,7 @@ final class TournamentsPage {
 		$this->form_tab->register();
 		$this->draw_tab->register();
 		$this->schedule_tab->register();
-		foreach ( array( 'save_tournament', 'delete_tournament', 'set_status', 'save_category', 'delete_category' ) as $action ) {
+		foreach ( array( 'save_tournament', 'delete_tournament', 'set_status', 'save_category', 'delete_category', 'bulk_categories' ) as $action ) {
 			add_action( 'admin_post_padelcamps_' . $action, array( $this, 'handle_' . $action ) );
 		}
 	}
@@ -129,7 +130,7 @@ final class TournamentsPage {
 			'err_status'       => array( 'error', __( 'No es pot canviar a aquest estat.', 'padelcamps' ) ),
 			'category_locked'  => array( 'error', __( 'Aquesta categoria ja té partits: no se’n pot canviar el format.', 'padelcamps' ) ),
 			'category_in_use'  => array( 'error', __( 'Aquesta categoria té inscripcions i no es pot eliminar.', 'padelcamps' ) ),
-			'tournament_in_use' => array( 'error', __( 'Només es poden eliminar tornejos en esborrany i sense inscripcions.', 'padelcamps' ) ),
+			'err_confirm_name' => array( 'error', __( 'El nom no coincideix: no s’ha eliminat res.', 'padelcamps' ) ),
 			'not_found'        => array( 'error', __( 'No s’ha trobat el torneig.', 'padelcamps' ) ),
 		);
 		return $messages[ $code ] ?? array( 'info', '' );
@@ -167,6 +168,14 @@ final class TournamentsPage {
 			$this->render_workspace( null, 'config' );
 			return;
 		}
+		if ( 'delete' === $action ) {
+			$tournament = $id ? $this->repo->find( $id ) : null;
+			if ( ! $tournament ) {
+				$this->redirect( array( 'msg' => 'not_found' ) );
+			}
+			$this->render_delete( $tournament );
+			return;
+		}
 		if ( 'edit' === $action ) {
 			$tournament = $id ? $this->repo->find( $id ) : null;
 			if ( ! $tournament ) {
@@ -185,10 +194,46 @@ final class TournamentsPage {
 		if ( '' === $code ) {
 			return;
 		}
+		if ( 'categories_bulk' === $code ) {
+			$this->bulk_notice();
+			return;
+		}
 		list( $type, $text ) = self::message( $code );
 		if ( '' !== $text ) {
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', esc_attr( $type ), esc_html( $text ) );
 		}
+	}
+
+	/** Result of a bulk edit: how many changed, and what could not be applied where. */
+	private function bulk_notice(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- display only.
+		$n      = isset( $_GET['bn'] ) ? absint( $_GET['bn'] ) : 0;
+		$locked = isset( $_GET['bl'] ) ? sanitize_text_field( wp_unslash( $_GET['bl'] ) ) : '';
+		$na     = isset( $_GET['bna'] ) ? sanitize_text_field( wp_unslash( $_GET['bna'] ) ) : '';
+		// phpcs:enable
+		$text = $n > 0
+			/* translators: %d: number of categories */
+			? sprintf( _n( '%d categoria actualitzada.', '%d categories actualitzades.', $n, 'padelcamps' ), $n )
+			: __( 'No hi ha hagut cap canvi.', 'padelcamps' );
+		printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $n > 0 ? 'success' : 'info', esc_html( $text ) );
+		if ( '' !== $locked ) {
+			/* translators: %s: category names with what could not change */
+			printf( '<div class="notice notice-warning"><p>%s</p></div>', esc_html( sprintf( __( 'No s’ha pogut canviar tot a: %s. El format i els desempats es bloquegen quan la categoria té partits; la consolació i els classificats, quan ja hi ha quadre final.', 'padelcamps' ), $locked ) ) );
+		}
+		if ( '' !== $na ) {
+			/* translators: %s: category names */
+			printf( '<div class="notice notice-info"><p>%s</p></div>', esc_html( sprintf( __( 'Algunes opcions no s’apliquen al format d’aquestes categories: %s.', 'padelcamps' ), $na ) ) );
+		}
+	}
+
+	private static function bulk_key_label( string $key ): string {
+		$labels = array(
+			'consolation' => __( 'consolació', 'padelcamps' ),
+			'advance'     => __( 'classificats per grup', 'padelcamps' ),
+			'format'      => __( 'format dels partits', 'padelcamps' ),
+			'criteria'    => __( 'desempats', 'padelcamps' ),
+		);
+		return $labels[ $key ] ?? $key;
 	}
 
 	private function render_list(): void {
@@ -220,7 +265,9 @@ final class TournamentsPage {
 				$dates .= ' – ' . self::fmt_date( $row['ends_on'] );
 			}
 			echo '<tr>';
-			echo '<td><strong><a href="' . esc_url( $edit ) . '">' . esc_html( $row['name'] ) . '</a></strong></td>';
+			echo '<td><strong><a href="' . esc_url( $edit ) . '">' . esc_html( $row['name'] ) . '</a></strong>';
+			echo '<div class="row-actions"><span class="edit"><a href="' . esc_url( $edit ) . '">' . esc_html__( 'Edita', 'padelcamps' ) . '</a> | </span>';
+			echo '<span class="trash"><a class="submitdelete" href="' . esc_url( self::url( array( 'action' => 'delete', 'id' => (int) $row['id'] ) ) ) . '">' . esc_html__( 'Elimina', 'padelcamps' ) . '</a></span></div></td>';
 			echo '<td>' . $this->status_badge( $row['status'] ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in status_badge().
 			echo '<td>' . esc_html( $dates ) . '</td>';
 			echo '<td>' . esc_html( $row['venue'] ?: '—' ) . '</td>';
@@ -335,14 +382,44 @@ final class TournamentsPage {
 		/* translators: 1: number of categories, 2: number of registrations */
 		echo '<p>' . esc_html( sprintf( __( '%1$d categories · %2$d inscripcions', 'padelcamps' ), count( $categories ), $regs ) ) . '</p>';
 
-		if ( TournamentStatus::DRAFT === $t['status'] ) {
-			echo '<hr><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" onsubmit="return confirm(\'' . esc_js( __( 'Segur que vols eliminar aquest torneig? Aquesta acció no es pot desfer.', 'padelcamps' ) ) . '\');">';
-			echo '<input type="hidden" name="action" value="padelcamps_delete_tournament">';
-			echo '<input type="hidden" name="id" value="' . esc_attr( (string) $id ) . '">';
-			wp_nonce_field( 'padelcamps_delete_tournament' );
-			printf( '<button class="button button-link-delete"%s>%s</button>', $regs > 0 ? ' disabled' : '', esc_html__( 'Elimina el torneig', 'padelcamps' ) );
-			echo '</form>';
+		echo '<hr><h2>' . esc_html__( 'Zona de perill', 'padelcamps' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Elimina el torneig amb totes les seves dades: categories, inscripcions, jugadors que no siguin en cap altre torneig, quadres, partits, resultats, horaris i registre de correus.', 'padelcamps' ) . '</p>';
+		echo '<p><a class="button button-link-delete" href="' . esc_url( self::url( array( 'action' => 'delete', 'id' => $id ) ) ) . '">' . esc_html__( 'Elimina el torneig…', 'padelcamps' ) . '</a></p>';
+	}
+
+	/** Confirmation screen: what will be deleted, and the tournament name typed again. */
+	private function render_delete( array $t ): void {
+		$id = (int) $t['id'];
+		$s  = $this->repo->deletion_summary( $id );
+		echo '<div class="wrap pc-wrap"><h1 class="pc-title">' . esc_html( sprintf( /* translators: %s: tournament name */ __( 'Eliminar «%s»', 'padelcamps' ), $t['name'] ) ) . '</h1>';
+		echo '<p class="pc-back"><a href="' . esc_url( self::url( array( 'action' => 'edit', 'id' => $id ) ) ) . '">← ' . esc_html__( 'Torna al torneig', 'padelcamps' ) . '</a></p>';
+		$this->render_notice();
+		echo '<div class="pc-panel pc-panel--solo">';
+		echo '<div class="notice notice-error inline"><p><strong>' . esc_html__( 'Aquesta acció no es pot desfer.', 'padelcamps' ) . '</strong> ' . esc_html__( 'S’esborrarà tot el que hi ha a continuació. Si vols conservar les inscripcions, exporta-les abans a CSV des de la pestanya Inscripcions.', 'padelcamps' ) . '</p></div>';
+		echo '<ul style="list-style:disc;padding-left:20px">';
+		$lines = array(
+			/* translators: %d: number */
+			sprintf( _n( '%d categoria', '%d categories', $s['categories'], 'padelcamps' ), $s['categories'] ),
+			/* translators: %d: number */
+			sprintf( _n( '%d inscripció', '%d inscripcions', $s['registrations'], 'padelcamps' ), $s['registrations'] ),
+			/* translators: %d: number */
+			sprintf( _n( '%d jugador (els que també siguin en altres tornejos es conserven)', '%d jugadors (els que també siguin en altres tornejos es conserven)', $s['players'], 'padelcamps' ), $s['players'] ),
+			/* translators: 1: matches, 2: played matches */
+			sprintf( __( '%1$d partits (%2$d amb resultat), quadres i horaris', 'padelcamps' ), $s['matches'], $s['played'] ),
+			/* translators: %d: number */
+			sprintf( _n( '%d correu al registre d’enviaments', '%d correus al registre d’enviaments', $s['emails'], 'padelcamps' ), $s['emails'] ),
+		);
+		foreach ( $lines as $line ) {
+			echo '<li>' . esc_html( $line ) . '</li>';
 		}
+		echo '</ul>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="padelcamps_delete_tournament"><input type="hidden" name="id" value="' . esc_attr( (string) $id ) . '">';
+		wp_nonce_field( 'padelcamps_delete_tournament' );
+		echo '<p><label for="pc-del-name">' . esc_html( sprintf( /* translators: %s: tournament name */ __( 'Per confirmar, escriu el nom del torneig: %s', 'padelcamps' ), $t['name'] ) ) . '</label><br>';
+		echo '<input type="text" id="pc-del-name" name="confirm_name" class="regular-text" autocomplete="off" required></p>';
+		echo '<p><button class="button button-primary pc-danger">' . esc_html__( 'Elimina definitivament', 'padelcamps' ) . '</button></p></form>';
+		echo '</div></div>';
 	}
 
 	private function tab_config( ?array $t ): void {
@@ -400,7 +477,9 @@ final class TournamentsPage {
 			'format'      => MatchFormat::defaults(),
 			'criteria'    => 'sets',
 		);
-		$locked   = $editing && $this->repo->category_has_matches( (int) $editing['id'] );
+		$locked    = $editing && $this->repo->category_has_matches( (int) $editing['id'] );
+		$ko_locked = $editing && $this->repo->knockout_has_matches( (int) $editing['id'] );
+		$ko_dis    = $ko_locked ? ' disabled' : '';
 		if ( $editing ) {
 			foreach ( $this->repo->phases( (int) $editing['id'] ) as $phase ) {
 				$settings = json_decode( (string) $phase['settings'], true ) ?: array();
@@ -424,6 +503,7 @@ final class TournamentsPage {
 			echo '<p>' . esc_html__( 'Encara no hi ha cap categoria.', 'padelcamps' ) . '</p>';
 		} else {
 			echo '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			echo '<td class="manage-column column-cb check-column"><input type="checkbox" id="pc-cat-all" aria-label="' . esc_attr__( 'Selecciona-ho tot', 'padelcamps' ) . '"></td>';
 			echo '<th>' . esc_html__( 'Nom', 'padelcamps' ) . '</th>';
 			echo '<th>' . esc_html__( 'Format', 'padelcamps' ) . '</th>';
 			echo '<th>' . esc_html__( 'Fases', 'padelcamps' ) . '</th>';
@@ -433,6 +513,7 @@ final class TournamentsPage {
 			foreach ( $categories as $cat ) {
 				$cid = (int) $cat['id'];
 				echo '<tr>';
+				echo '<th scope="row" class="check-column"><input type="checkbox" class="pc-cat-check" name="cats[]" value="' . $cid . '" form="pc-cat-bulk" aria-label="' . esc_attr( $cat['name'] ) . '"></th>';
 				echo '<td><strong>' . esc_html( $cat['name'] ) . '</strong></td>';
 				echo '<td>' . esc_html( self::template_label( $cat['format'] ) ) . '</td>';
 				echo '<td>' . esc_html( $this->phase_summary( $this->repo->phases( $cid ) ) ) . '</td>';
@@ -449,6 +530,7 @@ final class TournamentsPage {
 				echo '</td></tr>';
 			}
 			echo '</tbody></table>';
+			$this->bulk_categories_form( $tid );
 		}
 
 		echo '<h3 id="pc-category-form">' . ( $editing ? esc_html__( 'Edita la categoria', 'padelcamps' ) : esc_html__( 'Afegeix una categoria', 'padelcamps' ) ) . '</h3>';
@@ -480,16 +562,20 @@ final class TournamentsPage {
 		echo '</td></tr>';
 
 		echo '<tr data-opt="advance"><th scope="row"><label for="pc-cat-advance">' . esc_html__( 'Classificats per grup', 'padelcamps' ) . '</label></th><td>';
-		echo '<select id="pc-cat-advance" name="cat_advance">';
+		echo '<select id="pc-cat-advance" name="cat_advance"' . $ko_dis . '>'; // phpcs:ignore WordPress.Security.EscapeOutput -- literal.
 		for ( $n = 1; $n <= 4; $n++ ) {
 			printf( '<option value="%1$d"%2$s>%1$d</option>', $n, selected( $edit_opt['advance'], $n, false ) );
 		}
 		echo '</select></td></tr>';
 
 		echo '<tr data-opt="consolation"><th scope="row">' . esc_html__( 'Consolació', 'padelcamps' ) . '</th><td><label>';
-		printf( '<input type="checkbox" name="cat_consolation" value="1"%s> ', checked( $edit_opt['consolation'], true, false ) );
+		printf( '<input type="checkbox" name="cat_consolation" value="1"%s%s> ', checked( $edit_opt['consolation'], true, false ), $ko_dis ); // phpcs:ignore WordPress.Security.EscapeOutput -- literal.
 		echo esc_html__( 'Inclou quadre de consolació', 'padelcamps' ) . '</label>';
-		echo '<p class="description">' . esc_html__( 'Hi juguen les parelles que perden el primer partit del quadre final (les que passen directament no).', 'padelcamps' ) . '</p></td></tr>';
+		echo '<p class="description">' . esc_html__( 'Hi juguen les parelles que perden el primer partit del quadre final (les que passen directament no).', 'padelcamps' ) . '</p>';
+		if ( $ko_locked ) {
+			echo '<p class="description">' . esc_html__( 'El quadre final ja està generat: per canviar la consolació o els classificats, esborra’l primer a Sorteig i quadres.', 'padelcamps' ) . '</p>';
+		}
+		echo '</td></tr>';
 
 		// Match format and tie-breaks: fixed once the category has matches.
 		$dis = $locked ? ' disabled' : '';
@@ -538,6 +624,48 @@ final class TournamentsPage {
 
 		// Show only the options that the selected format supports.
 		echo '<script>(function(){var s=document.getElementById("pc-cat-template");if(!s)return;function u(){var o=s.options[s.selectedIndex];var a=(o.getAttribute("data-options")||"").split(" ");document.querySelectorAll("[data-opt]").forEach(function(r){r.style.display=a.indexOf(r.getAttribute("data-opt"))>-1?"":"none";});document.querySelectorAll("[data-tpl]").forEach(function(p){p.style.display=p.getAttribute("data-tpl")===s.value?"":"none";});}s.addEventListener("change",u);u();})();</script>';
+	}
+
+	/** "Edit selected categories" panel: every field starts at "keep". */
+	private function bulk_categories_form( int $tid ): void {
+		$keep   = '<option value="">' . esc_html__( '— No canviïs —', 'padelcamps' ) . '</option>';
+		$select = static function ( string $name, string $label, array $options ) use ( $keep ): void {
+			echo '<label class="pc-bulk-field"><span>' . esc_html( $label ) . '</span><select name="' . esc_attr( $name ) . '">' . $keep; // phpcs:ignore WordPress.Security.EscapeOutput -- $keep is escaped.
+			foreach ( $options as $value => $text ) {
+				printf( '<option value="%s">%s</option>', esc_attr( (string) $value ), esc_html( $text ) );
+			}
+			echo '</select></label>';
+		};
+
+		echo '<details class="pc-details" id="pc-cat-bulk-box"><summary class="button">' . esc_html__( 'Edita en bloc les categories seleccionades', 'padelcamps' ) . '</summary>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="pc-cat-bulk" style="margin-top:12px">';
+		echo '<input type="hidden" name="action" value="padelcamps_bulk_categories"><input type="hidden" name="tournament_id" value="' . esc_attr( (string) $tid ) . '">';
+		wp_nonce_field( 'padelcamps_bulk_categories' );
+		echo '<p class="description">' . esc_html__( 'Marca les categories a la taula i tria només el que vulguis canviar; la resta es manté.', 'padelcamps' ) . '</p>';
+		echo '<div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end">';
+		$select( 'b_consolation', __( 'Consolació', 'padelcamps' ), array( 'on' => __( 'Inclou quadre de consolació', 'padelcamps' ), 'off' => __( 'Sense consolació', 'padelcamps' ) ) );
+		$select( 'b_advance', __( 'Classificats per grup', 'padelcamps' ), array( 1 => '1', 2 => '2', 3 => '3', 4 => '4' ) );
+		$select( 'b_best_of', __( 'Sets', 'padelcamps' ), array( 3 => __( 'Al millor de 3 sets', 'padelcamps' ), 1 => __( 'A 1 set', 'padelcamps' ) ) );
+		$games = array();
+		foreach ( array( 6, 4, 9 ) as $g ) {
+			/* translators: %d: games per set */
+			$games[ $g ] = sprintf( __( 'Sets a %d jocs', 'padelcamps' ), $g );
+		}
+		$select( 'b_games', __( 'Jocs per set', 'padelcamps' ), $games );
+		$select( 'b_deciding', __( 'Set decisiu', 'padelcamps' ), array( 'super_tiebreak' => __( 'Set decisiu: super tie-break', 'padelcamps' ), 'set' => __( 'Set decisiu: set normal', 'padelcamps' ) ) );
+		$points = array();
+		foreach ( array( 10, 7 ) as $p ) {
+			/* translators: %d: points */
+			$points[ $p ] = sprintf( __( 'Super tie-break a %d punts', 'padelcamps' ), $p );
+		}
+		$select( 'b_points', __( 'Punts del super tie-break', 'padelcamps' ), $points );
+		$select( 'b_criteria', __( 'Desempats de la classificació', 'padelcamps' ), array( 'sets' => __( 'Victòries → diferència de sets → diferència de jocs → enfrontament directe', 'padelcamps' ), 'direct' => __( 'Victòries → enfrontament directe → diferència de sets → diferència de jocs', 'padelcamps' ) ) );
+		echo '<label class="pc-bulk-field"><span>' . esc_html__( 'Places (0 = sense límit)', 'padelcamps' ) . '</span><input type="number" min="0" name="b_max_teams" class="small-text" placeholder="—"></label>';
+		echo '<label class="pc-bulk-field"><span>' . esc_html__( 'Preu per inscripció (€)', 'padelcamps' ) . '</span><input type="number" min="0" step="0.01" name="b_price" class="small-text" placeholder="—"></label>';
+		echo '</div>';
+		echo '<p class="description">' . esc_html__( 'El preu nou només afecta les inscripcions que arribin a partir d’ara. El format i els desempats no es poden canviar en categories amb partits; la consolació i els classificats, sí, fins que es genera el quadre final.', 'padelcamps' ) . '</p>';
+		echo '<p><button class="button button-primary">' . esc_html__( 'Aplica a les seleccionades', 'padelcamps' ) . '</button></p></form></details>';
+		echo '<script>(function(){var a=document.getElementById("pc-cat-all"),f=document.getElementById("pc-cat-bulk");if(!a||!f)return;a.addEventListener("change",function(){document.querySelectorAll(".pc-cat-check").forEach(function(c){c.checked=a.checked;});});f.addEventListener("submit",function(e){if(!document.querySelector(".pc-cat-check:checked")){e.preventDefault();alert(' . wp_json_encode( __( 'Marca almenys una categoria a la taula.', 'padelcamps' ) ) . ');}});})();</script>';
 	}
 
 	private function phase_summary( array $phases ): string {
@@ -638,8 +766,11 @@ final class TournamentsPage {
 		if ( ! $tournament ) {
 			$this->redirect( array( 'msg' => 'not_found' ) );
 		}
-		if ( TournamentStatus::DRAFT !== $tournament['status'] || $this->repo->registrations_count( $id ) > 0 ) {
-			$this->redirect( array( 'action' => 'edit', 'id' => $id, 'msg' => 'tournament_in_use' ) );
+		// The organizer must type the name again: deleting removes registrations and results for good.
+		$typed = trim( (string) preg_replace( '/\s+/u', ' ', sanitize_text_field( self::post_str( 'confirm_name' ) ) ) );
+		$name  = trim( (string) preg_replace( '/\s+/u', ' ', (string) $tournament['name'] ) );
+		if ( '' === $typed || $typed !== $name ) {
+			$this->redirect( array( 'action' => 'delete', 'id' => $id, 'msg' => 'err_confirm_name' ) );
 		}
 		$this->repo->delete( $id );
 		$this->redirect( array( 'msg' => 'deleted' ) );
@@ -719,8 +850,86 @@ final class TournamentsPage {
 			}
 			unset( $phase );
 			$this->repo->replace_phases( $saved_id, $phases );
+		} elseif ( ! $this->repo->knockout_has_matches( $cid ) ) {
+			// With matches the phases stay, but consolation and teams per group can still
+			// change until the final bracket exists (they are only read when it is built).
+			$this->apply_phase_changes(
+				$existing,
+				CategoryBulk::changes(
+					array(
+						'consolation' => '1' === self::post_str( 'cat_consolation' ) ? 'on' : 'off',
+						'advance'     => self::post_str( 'cat_advance' ),
+					),
+					self::criteria_presets()
+				)
+			);
 		}
 		$this->redirect( $back + array( 'msg' => 'category_saved' ) );
+	}
+
+	/** Apply CategoryBulk phase changes to one category. @return array CategoryBulk::apply() result */
+	private function apply_phase_changes( array $category, array $changes ): array {
+		$cid    = (int) $category['id'];
+		$result = CategoryBulk::apply(
+			(string) $category['format'],
+			$this->repo->phases_decoded( $cid ),
+			$changes,
+			array(
+				'matches'  => $this->repo->category_has_matches( $cid ),
+				'knockout' => $this->repo->knockout_has_matches( $cid ),
+			),
+			self::criteria_presets()
+		);
+		foreach ( $result['settings'] as $phase_id => $settings ) {
+			$this->repo->update_phase_settings( (int) $phase_id, $settings );
+		}
+		return $result;
+	}
+
+	public function handle_bulk_categories(): void {
+		$this->guard( 'padelcamps_bulk_categories' );
+		$tid  = absint( self::post_str( 'tournament_id' ) );
+		$back = array( 'action' => 'edit', 'id' => $tid, 'tab' => 'config' );
+		if ( ! $tid || ! $this->repo->find( $tid ) ) {
+			$this->redirect( array( 'msg' => 'not_found' ) );
+		}
+		$input = array();
+		foreach ( array( 'consolation', 'advance', 'best_of', 'games', 'deciding', 'points', 'criteria', 'max_teams', 'price' ) as $key ) {
+			$input[ $key ] = sanitize_text_field( self::post_str( 'b_' . $key ) );
+		}
+		$changes = CategoryBulk::changes( $input, self::criteria_presets() );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in guard(); cast to int.
+		$ids = isset( $_POST['cats'] ) && is_array( $_POST['cats'] ) ? array_map( 'absint', wp_unslash( $_POST['cats'] ) ) : array();
+
+		$updated = 0;
+		$locked  = array();
+		$na      = array();
+		foreach ( $this->repo->categories( $tid ) as $cat ) {
+			if ( ! in_array( (int) $cat['id'], $ids, true ) || ! CategoryBulk::has_changes( $changes ) ) {
+				continue;
+			}
+			$res = $this->apply_phase_changes( $cat, $changes );
+			$this->repo->update_category_numbers( (int) $cat['id'], $changes['max_teams'], $changes['price'] );
+			$numbers = ( null !== $changes['max_teams'] && (int) $changes['max_teams'] !== (int) $cat['max_teams'] )
+				|| ( null !== $changes['price'] && (float) $changes['price'] !== (float) $cat['price'] );
+			if ( $res['settings'] || $numbers ) {
+				++$updated;
+			}
+			if ( $res['locked'] ) {
+				$locked[] = $cat['name'] . ' (' . implode( ', ', array_map( array( self::class, 'bulk_key_label' ), $res['locked'] ) ) . ')';
+			}
+			if ( $res['na'] ) {
+				$na[] = $cat['name'] . ' (' . implode( ', ', array_map( array( self::class, 'bulk_key_label' ), $res['na'] ) ) . ')';
+			}
+		}
+		$args = array( 'msg' => 'categories_bulk', 'bn' => $updated );
+		if ( $locked ) {
+			$args['bl'] = implode( '; ', $locked );
+		}
+		if ( $na ) {
+			$args['bna'] = implode( '; ', $na );
+		}
+		$this->redirect( $back + $args );
 	}
 
 	public function handle_delete_category(): void {

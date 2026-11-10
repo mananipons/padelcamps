@@ -811,6 +811,58 @@ $same = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_email' => 'a
 check( 'manual same email twice', 'same_email' === ( $same['errors']['p2_email'] ?? '' ) );
 check( 'manual no email ok', array() === MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B' ) )['errors'] );
 
+// --- CategoryBulk ---
+use PadelCamps\Engine\CategoryBulk as CB;
+$presets = array( 'sets' => array( 'wins', 'set_diff', 'game_diff', 'head_to_head' ), 'direct' => array( 'wins', 'head_to_head', 'set_diff', 'game_diff' ) );
+$none    = CB::changes( array(), $presets );
+check( 'bulk nothing', ! CB::has_changes( $none ) && null === $none['consolation'] && array() === $none['format'] );
+$ch = CB::changes( array( 'consolation' => 'on', 'advance' => '3', 'best_of' => '1', 'games' => '', 'criteria' => 'direct', 'max_teams' => '0', 'price' => '12,5' ), $presets );
+check( 'bulk parse', true === $ch['consolation'] && 3 === $ch['advance'] && array( 'best_of' => 1 ) === $ch['format'] && 'direct' === $ch['criteria'] && 0 === $ch['max_teams'] && 12.5 === $ch['price'] && CB::has_changes( $ch ) );
+check( 'bulk parse off / junk', false === CB::changes( array( 'consolation' => 'off' ), $presets )['consolation'] && null === CB::changes( array( 'advance' => '9', 'criteria' => 'x', 'max_teams' => '-1', 'price' => 'abc' ), $presets )['advance'] );
+$gk  = array(
+	array( 'id' => 1, 'type' => 'groups', 'settings' => array( 'advance' => 2, 'format' => array( 'best_of' => 3, 'games' => 6, 'deciding' => 'super_tiebreak', 'points' => 10 ) ) ),
+	array( 'id' => 2, 'type' => 'knockout', 'settings' => array( 'consolation' => false ) ),
+);
+$free = array( 'matches' => false, 'knockout' => false );
+$r    = CB::apply( 'groups_knockout', $gk, CB::changes( array( 'consolation' => 'on' ), $presets ), $free, $presets );
+check( 'bulk consolation on', true === $r['settings'][2]['consolation'] && ! isset( $r['settings'][1] ) && array( 'consolation' ) === $r['applied'] );
+$r = CB::apply( 'groups_knockout', $gk, CB::changes( array( 'consolation' => 'on', 'advance' => '1' ), $presets ), array( 'matches' => true, 'knockout' => false ), $presets );
+check( 'bulk consolation allowed with group matches', true === $r['settings'][2]['consolation'] && 1 === $r['settings'][1]['advance'] && array() === $r['locked'] );
+$r = CB::apply( 'groups_knockout', $gk, CB::changes( array( 'consolation' => 'on', 'best_of' => '1' ), $presets ), array( 'matches' => true, 'knockout' => true ), $presets );
+check( 'bulk locked by knockout', array() === $r['settings'] && array( 'consolation', 'format' ) === $r['locked'] );
+$r = CB::apply( 'groups_knockout', $gk, CB::changes( array( 'best_of' => '1' ), $presets ), array( 'matches' => true, 'knockout' => false ), $presets );
+check( 'bulk format locked by any match', array( 'format' ) === $r['locked'] && array() === $r['settings'] );
+$r = CB::apply( 'groups_knockout', $gk, CB::changes( array( 'games' => '4', 'criteria' => 'direct' ), $presets ), $free, $presets );
+check( 'bulk format merged', 4 === $r['settings'][1]['format']['games'] && 3 === $r['settings'][1]['format']['best_of'] && 4 === $r['settings'][2]['format']['games'] );
+check( 'bulk criteria groups only', $presets['direct'] === $r['settings'][1]['criteria'] && ! isset( $r['settings'][2]['criteria'] ) );
+$rr = CB::apply( 'round_robin', array( array( 'id' => 5, 'type' => 'round_robin', 'settings' => array() ) ), CB::changes( array( 'consolation' => 'on', 'advance' => '2', 'criteria' => 'sets' ), $presets ), $free, $presets );
+check( 'bulk n/a for round robin', array( 'consolation', 'advance' ) === $rr['na'] && $presets['sets'] === $rr['settings'][5]['criteria'] );
+$same = CB::apply( 'knockout', array( array( 'id' => 7, 'type' => 'knockout', 'settings' => array( 'consolation' => true ) ) ), CB::changes( array( 'consolation' => 'on' ), $presets ), $free, $presets );
+check( 'bulk unchanged not returned', array() === $same['settings'] && array( 'consolation' ) === $same['applied'] );
+
+// --- DashboardStats ---
+use PadelCamps\Engine\DashboardStats as DS;
+$ts = array(
+	array( 'id' => 1, 'status' => 'finished', 'starts_on' => '2026-11-01' ),
+	array( 'id' => 2, 'status' => 'registration_open', 'starts_on' => '2027-03-01' ),
+	array( 'id' => 3, 'status' => 'registration_open', 'starts_on' => '2026-12-05' ),
+	array( 'id' => 4, 'status' => 'draft', 'starts_on' => '2026-11-10' ),
+);
+check( 'active: closest open', 3 === DS::pick_active( $ts, '2026-11-10' ) );
+$ts[] = array( 'id' => 5, 'status' => 'in_progress', 'starts_on' => null );
+check( 'active: in progress wins', 5 === DS::pick_active( $ts, '2026-11-10' ) );
+check( 'active: none', null === DS::pick_active( array(), '2026-11-10' ) );
+check( 'active: only drafts', 9 === DS::pick_active( array( array( 'id' => 8, 'status' => 'draft', 'starts_on' => null ), array( 'id' => 9, 'status' => 'draft', 'starts_on' => null ) ), '2026-11-10' ) );
+check( 'active: finished before draft', 1 === DS::pick_active( array( array( 'id' => 1, 'status' => 'finished', 'starts_on' => '2026-01-01' ), array( 'id' => 2, 'status' => 'draft', 'starts_on' => '2026-11-10' ) ), '2026-11-10' ) );
+check( 'countdown before', array( 'state' => 'before', 'days' => 25, 'day' => 0, 'total' => 2 ) === DS::countdown( '2026-12-05', '2026-12-06', '2026-11-10' ) );
+check( 'countdown during day 2', array( 'state' => 'during', 'days' => 0, 'day' => 2, 'total' => 2 ) === DS::countdown( '2026-12-05', '2026-12-06', '2026-12-06' ) );
+check( 'countdown one-day today', 'during' === DS::countdown( '2026-11-10', null, '2026-11-10' )['state'] );
+check( 'countdown after', array( 'state' => 'after', 'days' => 3, 'day' => 0, 'total' => 2 ) === DS::countdown( '2026-12-05', '2026-12-06', '2026-12-09' ) );
+check( 'countdown bad end ignored', 1 === DS::countdown( '2026-12-05', '2026-12-01', '2026-11-10' )['total'] );
+check( 'countdown unknown', 'unknown' === DS::countdown( null, null, '2026-11-10' )['state'] );
+check( 'countdown across DST', 1 === DS::countdown( '2026-10-26', null, '2026-10-25' )['days'] );
+check( 'percent', 33 === DS::percent( 1, 3 ) && 0 === DS::percent( 5, 0 ) && 100 === DS::percent( 9, 8 ) && 100 === DS::percent( 8, 8 ) );
+
 // --- I18n: Catalog::scan_source ---
 use PadelCamps\I18n\Catalog;
 

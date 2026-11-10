@@ -150,13 +150,59 @@ final class TournamentRepository {
 	}
 
 	/** Raw cascade delete. The UI decides when this is allowed. */
+	/** What deleting the tournament will remove (shown before confirming). */
+	public function deletion_summary( int $id ): array {
+		global $wpdb;
+		$c   = self::t( 'categories' );
+		$r   = self::t( 'registrations' );
+		$m   = self::t( 'matches' );
+		$rp  = self::t( 'registration_players' );
+		$one = static fn( string $sql ): int => (int) $wpdb->get_var( $wpdb->prepare( $sql, $id ) );
+		return array(
+			'categories'    => $one( "SELECT COUNT(*) FROM {$c} WHERE tournament_id = %d" ),
+			'registrations' => $one( "SELECT COUNT(*) FROM {$r} r INNER JOIN {$c} c ON c.id = r.category_id WHERE c.tournament_id = %d" ),
+			'players'       => $one( "SELECT COUNT(DISTINCT rp.player_id) FROM {$rp} rp INNER JOIN {$r} r ON r.id = rp.registration_id INNER JOIN {$c} c ON c.id = r.category_id WHERE c.tournament_id = %d" ),
+			'matches'       => $one( "SELECT COUNT(*) FROM {$m} m INNER JOIN {$c} c ON c.id = m.category_id WHERE c.tournament_id = %d AND m.status <> 'bye'" ),
+			'played'        => $one( "SELECT COUNT(*) FROM {$m} m INNER JOIN {$c} c ON c.id = m.category_id WHERE c.tournament_id = %d AND m.status = 'played'" ),
+			'emails'        => $one( 'SELECT COUNT(*) FROM ' . self::t( 'notifications_log' ) . ' WHERE tournament_id = %d' ),
+		);
+	}
+
+	/**
+	 * Delete a tournament and everything that hangs from it: categories, phases,
+	 * registrations, players that are in no other tournament, matches, result and
+	 * reschedule reports, draw log, courts and send log. Irreversible.
+	 */
 	public function delete( int $id ): void {
 		global $wpdb;
-		foreach ( $this->categories( $id ) as $category ) {
-			$this->delete_category( (int) $category['id'] );
-		}
+		$c   = self::t( 'categories' );
+		$r   = self::t( 'registrations' );
+		$rp  = self::t( 'registration_players' );
+		$p   = self::t( 'players' );
+		$m   = self::t( 'matches' );
+		$cat = $wpdb->prepare( "SELECT id FROM {$c} WHERE tournament_id = %d", $id );
+		$reg = "SELECT id FROM {$r} WHERE category_id IN ({$cat})";
+
+		$wpdb->query( 'START TRANSACTION' );
+		$player_ids = array_map( 'intval', $wpdb->get_col( "SELECT DISTINCT player_id FROM {$rp} WHERE registration_id IN ({$reg})" ) );
+
+		$wpdb->query( 'DELETE FROM ' . self::t( 'result_reports' ) . " WHERE match_id IN (SELECT id FROM {$m} WHERE category_id IN ({$cat}))" );
+		$wpdb->query( 'DELETE FROM ' . self::t( 'reschedule_requests' ) . " WHERE match_id IN (SELECT id FROM {$m} WHERE category_id IN ({$cat}))" );
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . self::t( 'notifications_log' ) . " WHERE tournament_id = %d OR ( ref_type = 'registration' AND ref_id IN ({$reg}) )", $id ) );
+		$wpdb->query( "DELETE FROM {$m} WHERE category_id IN ({$cat})" );
+		$wpdb->query( 'DELETE FROM ' . self::t( 'draw_log' ) . " WHERE category_id IN ({$cat})" );
+		$wpdb->query( 'DELETE FROM ' . self::t( 'phases' ) . " WHERE category_id IN ({$cat})" );
+		$wpdb->query( "DELETE FROM {$rp} WHERE registration_id IN ({$reg})" );
+		$wpdb->query( "DELETE FROM {$r} WHERE category_id IN ({$cat})" );
+		$wpdb->delete( $c, array( 'tournament_id' => $id ) );
 		$wpdb->delete( self::t( 'courts' ), array( 'tournament_id' => $id ) );
 		$wpdb->delete( self::t( 'tournaments' ), array( 'id' => $id ) );
+		// Players are shared between tournaments: remove only the ones left without any registration.
+		if ( $player_ids ) {
+			$list = implode( ',', $player_ids );
+			$wpdb->query( "DELETE pl FROM {$p} pl LEFT JOIN {$rp} x ON x.player_id = pl.id WHERE pl.id IN ({$list}) AND x.id IS NULL" );
+		}
+		$wpdb->query( 'COMMIT' );
 	}
 
 	// --- Categories -------------------------------------------------------
@@ -246,6 +292,48 @@ final class TournamentRepository {
 			$wpdb->prepare( "SELECT * FROM {$p} WHERE category_id = %d ORDER BY sort_order ASC, id ASC", $category_id ),
 			ARRAY_A
 		) ?: array();
+	}
+
+	/** Phases with decoded settings (for the bulk edit of categories). */
+	public function phases_decoded( int $category_id ): array {
+		return array_map(
+			static function ( array $p ): array {
+				$s             = json_decode( (string) $p['settings'], true );
+				$p['settings'] = is_array( $s ) ? $s : array();
+				return $p;
+			},
+			$this->phases( $category_id )
+		);
+	}
+
+	public function update_phase_settings( int $phase_id, array $settings ): void {
+		global $wpdb;
+		$wpdb->update( self::t( 'phases' ), array( 'settings' => wp_json_encode( $settings ) ), array( 'id' => $phase_id ) );
+	}
+
+	/** True once the final bracket (knockout phase) has been created. */
+	public function knockout_has_matches( int $category_id ): bool {
+		global $wpdb;
+		$m = self::t( 'matches' );
+		$p = self::t( 'phases' );
+		return (bool) $wpdb->get_var(
+			$wpdb->prepare( "SELECT m.id FROM {$m} m INNER JOIN {$p} p ON p.id = m.phase_id WHERE m.category_id = %d AND p.type IN ('knockout','consolation') LIMIT 1", $category_id )
+		);
+	}
+
+	/** Places (0 = unlimited) and/or price; null keeps the current value. */
+	public function update_category_numbers( int $id, ?int $max_teams, ?float $price ): void {
+		global $wpdb;
+		$row = array();
+		if ( null !== $max_teams ) {
+			$row['max_teams'] = $max_teams > 0 ? $max_teams : null;
+		}
+		if ( null !== $price ) {
+			$row['price'] = $price;
+		}
+		if ( $row ) {
+			$wpdb->update( self::t( 'categories' ), $row, array( 'id' => $id ) );
+		}
 	}
 
 	/** @param array<int, array{type:string, sort_order:int, settings:array}> $phases */
