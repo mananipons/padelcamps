@@ -59,12 +59,20 @@ PadelCamps cobreix tot el cicle d'un torneig de pàdel dins la web WordPress del
 
 ## 🚀 Instal·lació
 
+### Opció 1 · Des del ZIP (recomanada)
+
+1. Descarrega **`padelcamps-X.Y.Z.zip`** de l'apartat [**Releases**](https://github.com/mananipons/padelcamps/releases/latest) (secció *Assets*).
+2. A WordPress: **Plugins → Afegeix nou → Puja el connector**, selecciona el ZIP i prem **Instal·la ara**.
+3. Prem **Activa el connector**.
+
+> No descarreguis el botó verd *Code → Download ZIP*: aquest ZIP porta la carpeta `padelcamps-main` i WordPress el instal·laria amb un nom incorrecte.
+
+### Opció 2 · Amb Git
+
 ```bash
-# 1. Clona el repositori dins la carpeta de plugins
 cd wp-content/plugins
 git clone https://github.com/mananipons/padelcamps.git
-
-# 2. Activa'l des de l'admin de WordPress  →  Plugins → PadelCamps
+# Activa'l des de l'admin de WordPress  →  Plugins → PadelCamps
 ```
 
 En activar-lo es crea el *schema* de la base de dades (`dbDelta`) i apareix el menú **PadelCamps** a l'admin.
@@ -187,6 +195,7 @@ Des de l'admin, **PadelCamps → Traduccions** permet editar qualsevol cadena pe
 - [x] Admin amb full d'estils propi (caixes amb padding, cantonades de 6px com a màxim)
 - [ ] Pàgina **Jugadors** (base de dades reutilitzable, historial, fusió de duplicats) i **rànquing de temporada** entre tornejos (per jugador; cal decidir punts i què és una temporada)
 - [ ] Pàgina **Clubs** (clubs reutilitzables; ara placeholder al menú)
+- [ ] Opció de configuració **Activar llavors als sortejos**: permet fixar una llavor (número o text) perquè el sorteig es pugui repetir idèntic o justificar davant d'una queixa. Desactivada per defecte (sorteig aleatori pur, amb llavor interna al registre d'auditoria)
 - [ ] Comunicació: cua d'enviament (Action Scheduler), correus en HTML, plantilles per torneig, recordatori el dia abans
 - [ ] Inscripció manual: canviar la categoria d'una inscripció, DNI / welcome pack / disponibilitat
 - [ ] **Fase 2:** americana, canvis de partit, recordatoris, pagament (Redsys)
