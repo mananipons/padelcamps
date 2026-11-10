@@ -150,7 +150,7 @@ final class Dashboard {
 		self::kpi( __( 'Pendents de confirmar', 'padelcamps' ), (string) $s['pending'], sprintf( __( '%d a la llista d’espera', 'padelcamps' ), $s['waitlist'] ), null, self::tab_url( $tid, 'registrations', array( 'status' => 'pending' ) ), $s['pending'] > 0 ? 'warn' : '' );
 
 		/* translators: %s: amount */
-		self::kpi( __( 'Cobrat', 'padelcamps' ), self::money( $s['paid'] ), sprintf( __( 'Pendent de cobrar: %s', 'padelcamps' ), self::money( $s['unpaid'] ) ), null, self::tab_url( $tid, 'registrations', array( 'pay' => 'pending' ) ) );
+		self::kpi( __( 'Cobrat', 'padelcamps' ), self::money( $s['paid'] ), sprintf( __( 'Pendent de cobrar: %s', 'padelcamps' ), self::money( $s['unpaid'] ) ), null, self::tab_url( $tid, 'registrations' ) );
 
 		$progress = DashboardStats::percent( $s['played'], $s['matches'] );
 		/* translators: 1: total matches, 2: percentage */

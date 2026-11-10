@@ -770,4 +770,8 @@ return array(
 	'%d correu al registre d’enviaments' => array( '%d correo en el registro de envíos', '%d correos en el registro de envíos' ),
 	'Per confirmar, escriu el nom del torneig: %s' => 'Para confirmar, escribe el nombre del torneo: %s',
 	'Elimina definitivament' => 'Eliminar definitivamente',
+
+	// Registrations summary under a filter.
+	'Totals del filtre actual:' => 'Totales del filtro actual:',
+	'treu els filtres' => 'quitar los filtros',
 );

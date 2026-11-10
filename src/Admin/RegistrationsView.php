@@ -255,7 +255,12 @@ final class RegistrationsView {
 		if ( $tid > 0 ) {
 			$this->category_stats_table( $tid );
 		}
-		$this->summary_line( $this->regs->summary( $f ) );
+		// The tournament itself is not a "filter" inside its own tab.
+		$active = self::filter_args( $f );
+		if ( $tid > 0 ) {
+			unset( $active['tournament'] );
+		}
+		$this->summary_line( $this->regs->summary( $f ), $active ? self::url( $tid ) : '' );
 		$this->filter_form( $tid, $f );
 
 		if ( ! $rows ) {
@@ -350,7 +355,8 @@ final class RegistrationsView {
 		echo '</tbody></table>';
 	}
 
-	private function summary_line( array $s ): void {
+	/** @param string $clear_url non-empty when a filter is active: the totals then only cover the filtered rows. */
+	private function summary_line( array $s, string $clear_url = '' ): void {
 		/* translators: 1: total, 2: pending, 3: confirmed, 4: waiting list, 5: cancelled */
 		$counts = sprintf(
 			__( '%1$d inscripcions · %2$d pendents · %3$d confirmades · %4$d en llista d’espera · %5$d cancel·lades', 'padelcamps' ),
@@ -362,7 +368,11 @@ final class RegistrationsView {
 		);
 		/* translators: 1: amount collected, 2: amount still to collect */
 		$money = sprintf( __( 'Cobrat: %1$s · Pendent de cobrar: %2$s', 'padelcamps' ), self::money( $s['paid_total'] ), self::money( $s['due_total'] ) );
-		echo '<div class="pc-summary"><strong>' . esc_html( $counts ) . '</strong><span>' . esc_html( $money ) . '</span></div>';
+		echo '<div class="pc-summary">';
+		if ( '' !== $clear_url ) {
+			echo '<span class="pc-muted">' . esc_html__( 'Totals del filtre actual:', 'padelcamps' ) . ' <a href="' . esc_url( $clear_url ) . '">' . esc_html__( 'treu els filtres', 'padelcamps' ) . '</a></span>';
+		}
+		echo '<strong>' . esc_html( $counts ) . '</strong><span>' . esc_html( $money ) . '</span></div>';
 	}
 
 	private function filter_form( int $tid, array $f ): void {

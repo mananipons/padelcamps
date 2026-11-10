@@ -21,6 +21,9 @@ final class StatsRepository {
 		$rp = self::t( 'registration_players' );
 		$m  = self::t( 'matches' );
 
+		// Money follows Engine\RegistrationStatus::summarize() (the Inscripcions tab): "paid" stays
+		// collected even if the registration is later cancelled, until it is marked refunded;
+		// "to collect" = payment pending on registrations that hold a place.
 		$regs = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT
@@ -28,7 +31,7 @@ final class StatsRepository {
 					SUM(r.status = 'pending') AS pending,
 					SUM(r.status = 'waitlist') AS waitlist,
 					SUM(r.status = 'cancelled') AS cancelled,
-					COALESCE(SUM(CASE WHEN r.payment_status = 'paid' AND r.status <> 'cancelled' THEN r.amount END), 0) AS paid,
+					COALESCE(SUM(CASE WHEN r.payment_status = 'paid' THEN r.amount END), 0) AS paid,
 					COALESCE(SUM(CASE WHEN r.payment_status = 'pending' AND r.status IN ('pending','confirmed') THEN r.amount END), 0) AS unpaid,
 					SUM(r.payment_status = 'pending' AND r.status = 'confirmed' AND r.amount > 0) AS unpaid_confirmed
 				FROM {$r} r INNER JOIN {$c} c ON c.id = r.category_id WHERE c.tournament_id = %d",
@@ -151,7 +154,7 @@ final class StatsRepository {
 			'registrations' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$r} WHERE status <> 'cancelled'" ),
 			'players'       => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT rp.player_id) FROM {$rp} rp INNER JOIN {$r} r ON r.id = rp.registration_id WHERE r.status <> 'cancelled'" ),
 			'played'        => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$m} WHERE status = 'played'" ),
-			'paid'          => (float) $wpdb->get_var( "SELECT COALESCE(SUM(amount), 0) FROM {$r} WHERE payment_status = 'paid' AND status <> 'cancelled'" ),
+			'paid'          => (float) $wpdb->get_var( "SELECT COALESCE(SUM(amount), 0) FROM {$r} WHERE payment_status = 'paid'" ),
 			'clubs'         => (int) $wpdb->get_var(
 				'SELECT COUNT(DISTINCT LOWER(TRIM(p.club))) FROM ' . self::t( 'players' ) . " p INNER JOIN {$rp} rp ON rp.player_id = p.id INNER JOIN {$r} r ON r.id = rp.registration_id
 				WHERE r.status <> 'cancelled' AND p.club IS NOT NULL AND TRIM(p.club) <> ''"

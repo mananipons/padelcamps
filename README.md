@@ -41,7 +41,7 @@ PadelCamps cobreix tot el cicle d'un torneig de pàdel dins la web WordPress del
 | 📊 **Tauler** | Torneig actiu amb les xifres clau en gran (parelles, jugadors, cobrat, partits jugats i d'avui, resultats per revisar, correus), llista de feines pendents, progrés per categoria i totals de tots els tornejos |
 | 🏷️ **Tornejos i categories** | Espai de treball per torneig amb pestanyes, **edició en bloc** de categories (consolació, classificats, format dels partits, desempats, places, preu) i eliminació completa d'un torneig amb confirmació |
 | 📝 **Inscripcions** | Formulari públic configurable per torneig, welcome pack lliure, disponibilitat per franges, consentiments, llista d'espera automàtica i antispam |
-| 🗂️ **Gestió** | Llista amb filtres, accions en bloc, control de pagaments, detall per parella i exportació **CSV** |
+| 🗂️ **Gestió** | Llista amb filtres, accions en bloc, control de pagaments amb resum de cobrat / pendent de cobrar (avisa quan els totals són d'un filtre), detall per parella i exportació **CSV** |
 | ✍️ **Inscripció manual** | L'organitzador dona d'alta parelles des de l'admin (telèfon, WhatsApp, al club) triant estat, pagament i idioma dels correus, i edita les dades dels jugadors |
 | 🎲 **Sorteig** | Per llavor, caps de sèrie, grups per bombos, separació de parelles del mateix club, registre d'auditoria (`draw_log`) |
 | 🧩 **Formats** | Fase de grups + eliminatòria, tots contra tots, eliminatòria directa, quadre de consolació |
