@@ -22,6 +22,25 @@ final class Menu {
 
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_filter( 'admin_body_class', array( $this, 'body_class' ) );
+	}
+
+	/** True on any PadelCamps admin screen (dashboard, tournaments, registrations…). */
+	private static function is_plugin_screen(): bool {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only.
+		return 0 === strpos( $page, 'padelcamps' );
+	}
+
+	public function enqueue_assets(): void {
+		if ( ! self::is_plugin_screen() ) {
+			return;
+		}
+		wp_enqueue_style( 'padelcamps-admin', PADELCAMPS_URL . 'assets/css/admin.css', array(), PADELCAMPS_VERSION . '.' . filemtime( PADELCAMPS_PATH . 'assets/css/admin.css' ) );
+	}
+
+	public function body_class( string $classes ): string {
+		return self::is_plugin_screen() ? $classes . ' padelcamps-admin' : $classes;
 	}
 
 	public function add_menu(): void {

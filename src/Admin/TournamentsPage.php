@@ -194,7 +194,7 @@ final class TournamentsPage {
 	private function render_list(): void {
 		$rows = $this->repo->all();
 
-		echo '<div class="wrap"><h1 class="wp-heading-inline">' . esc_html__( 'Tornejos', 'padelcamps' ) . '</h1> ';
+		echo '<div class="wrap pc-wrap"><h1 class="wp-heading-inline">' . esc_html__( 'Tornejos', 'padelcamps' ) . '</h1> ';
 		echo '<a href="' . esc_url( self::url( array( 'action' => 'new' ) ) ) . '" class="page-title-action">' . esc_html__( 'Afegeix un torneig', 'padelcamps' ) . '</a>';
 		echo '<hr class="wp-header-end">';
 		$this->render_notice();
@@ -233,7 +233,8 @@ final class TournamentsPage {
 
 	private function status_badge( string $status ): string {
 		return sprintf(
-			'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#f0f0f1;font-size:12px">%s</span>',
+			'<span class="pc-badge pc-badge--%s">%s</span>',
+			esc_attr( sanitize_html_class( $status ) ),
 			esc_html( self::status_label( $status ) )
 		);
 	}
@@ -241,14 +242,14 @@ final class TournamentsPage {
 	private function render_workspace( ?array $tournament, string $tab ): void {
 		$is_new = null === $tournament;
 
-		echo '<div class="wrap"><h1>';
+		echo '<div class="wrap pc-wrap"><h1 class="pc-title">';
 		echo $is_new ? esc_html__( 'Nou torneig', 'padelcamps' ) : esc_html( $tournament['name'] ) . ' ' . $this->status_badge( $tournament['status'] ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped above.
 		echo '</h1>';
-		echo '<p><a href="' . esc_url( self::url() ) . '">← ' . esc_html__( 'Tots els tornejos', 'padelcamps' ) . '</a></p>';
+		echo '<p class="pc-back"><a href="' . esc_url( self::url() ) . '">← ' . esc_html__( 'Tots els tornejos', 'padelcamps' ) . '</a></p>';
 		$this->render_notice();
 
 		if ( ! $is_new ) {
-			echo '<nav class="nav-tab-wrapper" style="margin-bottom:1em">';
+			echo '<nav class="nav-tab-wrapper pc-tabs">';
 			foreach ( self::tabs() as $slug => $def ) {
 				printf(
 					'<a href="%s" class="nav-tab%s"%s>%s</a>',
@@ -261,6 +262,8 @@ final class TournamentsPage {
 			echo '</nav>';
 		}
 
+		// Everything inside a tab sits in one padded card, attached to the tab strip.
+		echo '<div class="pc-panel' . ( $is_new ? ' pc-panel--solo' : '' ) . '">';
 		if ( $is_new || 'config' === $tab ) {
 			$this->tab_config( $tournament );
 		} elseif ( 'summary' === $tab ) {
@@ -282,7 +285,7 @@ final class TournamentsPage {
 		} else {
 			echo '<p>' . esc_html__( 'Aquesta secció arribarà aviat.', 'padelcamps' ) . '</p>';
 		}
-		echo '</div>';
+		echo '</div></div>';
 	}
 
 	private function tab_summary( array $t ): void {
@@ -299,7 +302,7 @@ final class TournamentsPage {
 		}
 		echo '</ol>';
 
-		echo '<div style="display:flex;gap:8px;margin-bottom:1.5em">';
+		echo '<div class="pc-actions">';
 		foreach ( array( 'prev' => $prev, 'next' => $next ) as $dir => $target ) {
 			if ( null === $target ) {
 				continue;
@@ -491,7 +494,7 @@ final class TournamentsPage {
 		// Match format and tie-breaks: fixed once the category has matches.
 		$dis = $locked ? ' disabled' : '';
 		$f   = $edit_opt['format'];
-		echo '<tr><th scope="row">' . esc_html__( 'Format dels partits', 'padelcamps' ) . '</th><td><span style="display:flex;gap:6px;flex-wrap:wrap">';
+		echo '<tr><th scope="row">' . esc_html__( 'Format dels partits', 'padelcamps' ) . '</th><td><span class="pc-inline">';
 		echo '<select name="fmt_best_of" aria-label="' . esc_attr__( 'Sets', 'padelcamps' ) . '"' . $dis . '>'; // phpcs:ignore WordPress.Security.EscapeOutput -- $dis is a literal.
 		printf( '<option value="3"%s>%s</option>', selected( $f['best_of'], 3, false ), esc_html__( 'Al millor de 3 sets', 'padelcamps' ) );
 		printf( '<option value="1"%s>%s</option>', selected( $f['best_of'], 1, false ), esc_html__( 'A 1 set', 'padelcamps' ) );

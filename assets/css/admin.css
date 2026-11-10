@@ -1,0 +1,616 @@
+/*
+ * PadelCamps — admin styles.
+ * Loaded only on PadelCamps screens (body.padelcamps-admin). Built on top of the
+ * WordPress admin look: it follows the user's admin colour scheme through
+ * --wp-admin-theme-color and only adds structure (cards, toolbars, tables).
+ */
+
+.padelcamps-admin {
+	--pc-accent: var(--wp-admin-theme-color, #3858e9);
+	--pc-border: #dcdcde;
+	--pc-border-soft: #ececee;
+	--pc-surface: #fff;
+	--pc-surface-alt: #f6f7f7;
+	--pc-text: #1d2327;
+	--pc-muted: #646970;
+	--pc-radius: 10px;
+	--pc-control-h: 36px;
+	--pc-pad: 28px;
+}
+
+/* ---------- Page header ---------------------------------------------------- */
+
+.padelcamps-admin .pc-wrap > h1,
+.padelcamps-admin .pc-wrap > h1.wp-heading-inline {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 18px 0 6px;
+	font-size: 26px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.padelcamps-admin .pc-back {
+	margin: 4px 0 18px;
+}
+
+.padelcamps-admin .pc-back a {
+	text-decoration: none;
+}
+
+.padelcamps-admin .pc-back a:hover {
+	text-decoration: underline;
+}
+
+/* ---------- Tabs + card ---------------------------------------------------- */
+
+.padelcamps-admin .pc-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	border-bottom: 0;
+}
+
+.padelcamps-admin .pc-tabs .nav-tab {
+	position: relative;
+	float: none;
+	margin: 0;
+	padding: 11px 18px;
+	border: 1px solid var(--pc-border);
+	border-bottom: 0;
+	border-radius: 8px 8px 0 0;
+	background: #eceef0;
+	color: var(--pc-muted);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.3;
+	transition: background-color .15s ease, color .15s ease;
+}
+
+.padelcamps-admin .pc-tabs .nav-tab:hover {
+	background: #f6f7f7;
+	color: var(--pc-text);
+}
+
+.padelcamps-admin .pc-tabs .nav-tab:focus {
+	box-shadow: 0 0 0 2px var(--pc-accent);
+	outline: 2px solid transparent;
+}
+
+.padelcamps-admin .pc-tabs .nav-tab-active,
+.padelcamps-admin .pc-tabs .nav-tab-active:hover {
+	z-index: 1;
+	margin-bottom: -1px;
+	padding-bottom: 12px;
+	border-color: var(--pc-border);
+	border-top: 2px solid var(--pc-accent);
+	background: var(--pc-surface);
+	color: var(--pc-text);
+	font-weight: 600;
+}
+
+.padelcamps-admin .pc-panel {
+	box-sizing: border-box;
+	max-width: 1280px;
+	padding: var(--pc-pad);
+	border: 1px solid var(--pc-border);
+	border-radius: 0 var(--pc-radius) var(--pc-radius) var(--pc-radius);
+	background: var(--pc-surface);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.padelcamps-admin .pc-panel--solo {
+	border-radius: var(--pc-radius);
+}
+
+.padelcamps-admin .pc-panel > :first-child,
+.padelcamps-admin .pc-panel > .pc-h2-first,
+.padelcamps-admin .pc-panel h2:first-child {
+	margin-top: 0;
+}
+
+.padelcamps-admin .pc-panel > :last-child {
+	margin-bottom: 0;
+}
+
+.padelcamps-admin .pc-panel h2 {
+	margin: 1.6em 0 .7em;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.padelcamps-admin .pc-panel h3 {
+	margin: 1.8em 0 .6em;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* Section separators stretch edge to edge of the card. */
+.padelcamps-admin .pc-panel hr {
+	margin: 32px calc(var(--pc-pad) * -1);
+	border: 0;
+	border-top: 1px solid var(--pc-border-soft);
+}
+
+.padelcamps-admin .pc-panel p.description,
+.padelcamps-admin .pc-panel .description {
+	max-width: 62ch;
+	color: var(--pc-muted);
+	font-size: 13px;
+}
+
+.padelcamps-admin .pc-lead {
+	max-width: 70ch;
+	margin: 0 0 20px;
+	color: var(--pc-muted);
+	font-size: 14px;
+}
+
+.padelcamps-admin .pc-back + .notice,
+.padelcamps-admin .pc-wrap > .notice {
+	max-width: 1280px;
+	box-sizing: border-box;
+	margin: 0 0 14px;
+	border-radius: 6px;
+}
+
+.padelcamps-admin .pc-panel .notice {
+	margin: 0 0 18px;
+	border-radius: 6px;
+}
+
+/* ---------- Form controls -------------------------------------------------- */
+
+.padelcamps-admin .pc-panel input[type="text"],
+.padelcamps-admin .pc-panel input[type="email"],
+.padelcamps-admin .pc-panel input[type="tel"],
+.padelcamps-admin .pc-panel input[type="number"],
+.padelcamps-admin .pc-panel input[type="date"],
+.padelcamps-admin .pc-panel input[type="time"],
+.padelcamps-admin .pc-panel input[type="url"],
+.padelcamps-admin .pc-panel input[type="search"],
+.padelcamps-admin .pc-panel select,
+.padelcamps-admin .pc-toolbar input,
+.padelcamps-admin .pc-toolbar select {
+	box-sizing: border-box;
+	min-height: var(--pc-control-h);
+	padding-top: 0;
+	padding-bottom: 0;
+	border-color: #8c8f94;
+	border-radius: 6px;
+	font-size: 14px;
+	line-height: 2.4;
+}
+
+.padelcamps-admin .pc-panel select {
+	padding-right: 30px;
+	line-height: 1.4;
+}
+
+.padelcamps-admin .pc-panel textarea {
+	box-sizing: border-box;
+	padding: 8px 12px;
+	border-color: #8c8f94;
+	border-radius: 6px;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.padelcamps-admin .pc-panel input:focus,
+.padelcamps-admin .pc-panel select:focus,
+.padelcamps-admin .pc-panel textarea:focus,
+.padelcamps-admin .pc-toolbar input:focus,
+.padelcamps-admin .pc-toolbar select:focus {
+	border-color: var(--pc-accent);
+	box-shadow: 0 0 0 1px var(--pc-accent);
+	outline: 2px solid transparent;
+}
+
+.padelcamps-admin .pc-panel .button,
+.padelcamps-admin .pc-toolbar .button,
+.padelcamps-admin .pc-head .button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--pc-control-h);
+	padding: 0 16px;
+	border-radius: 6px;
+	font-size: 13px;
+	line-height: 1.2;
+}
+
+.padelcamps-admin .pc-panel .button.button-link-delete,
+.padelcamps-admin .pc-panel .button-link {
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.padelcamps-admin .pc-panel .button.button-link-delete {
+	display: inline;
+}
+
+.padelcamps-admin .pc-panel .button-link-delete {
+	color: #b32d2e;
+}
+
+/* Settings-style rows: label column + control column. */
+.padelcamps-admin .pc-panel .form-table {
+	margin-top: 0;
+	max-width: 1000px;
+}
+
+.padelcamps-admin .pc-panel .form-table > tbody > tr > th {
+	width: 200px;
+	padding: 20px 24px 20px 0;
+	font-weight: 600;
+	vertical-align: top;
+}
+
+.padelcamps-admin .pc-panel .form-table > tbody > tr > td {
+	padding: 14px 0;
+	vertical-align: top;
+}
+
+.padelcamps-admin .pc-panel .form-table td > .description:first-child {
+	margin-top: 0;
+}
+
+.padelcamps-admin .pc-panel .form-table td p.description {
+	margin: 6px 0 0;
+}
+
+.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > th,
+.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > td {
+	border-top: 1px solid var(--pc-border-soft);
+}
+
+.padelcamps-admin .pc-panel .form-table .regular-text {
+	width: 100%;
+	max-width: 360px;
+}
+
+.padelcamps-admin .pc-panel .form-table .large-text {
+	width: 100%;
+	max-width: 100%;
+}
+
+.padelcamps-admin .pc-panel .form-table .small-text {
+	width: 110px;
+}
+
+.padelcamps-admin .pc-inline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.padelcamps-admin .pc-panel > form > p:last-child,
+.padelcamps-admin .pc-submit {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 14px;
+	margin: 22px 0 0;
+	padding-top: 20px;
+	border-top: 1px solid var(--pc-border-soft);
+}
+
+.padelcamps-admin .pc-notify {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+}
+
+.padelcamps-admin .pc-error {
+	margin-top: 4px;
+	color: #b32d2e;
+	font-weight: 500;
+}
+
+.padelcamps-admin .pc-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 24px;
+}
+
+/* ---------- Registrations: header, summary, filters ------------------------ */
+
+.padelcamps-admin .pc-head {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0 0 18px;
+}
+
+.padelcamps-admin .pc-summary {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0 0 16px;
+	padding: 12px 16px;
+	border: 1px solid var(--pc-border-soft);
+	border-left: 3px solid var(--pc-accent);
+	border-radius: 6px;
+	background: var(--pc-surface-alt);
+	font-size: 13px;
+}
+
+.padelcamps-admin .pc-summary span {
+	color: var(--pc-muted);
+}
+
+.padelcamps-admin .pc-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 18px;
+}
+
+.padelcamps-admin .pc-toolbar select {
+	max-width: 220px;
+}
+
+.padelcamps-admin .pc-toolbar input[type="search"] {
+	flex: 1 1 220px;
+	min-width: 180px;
+	max-width: 320px;
+}
+
+.padelcamps-admin .pc-toolbar__end {
+	margin-left: auto;
+}
+
+.padelcamps-admin .pc-bulk {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 12px;
+	padding: 10px 12px;
+	border-radius: 6px;
+	background: var(--pc-surface-alt);
+}
+
+.padelcamps-admin .pc-bulk .description {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.padelcamps-admin .pc-empty {
+	padding: 36px 16px;
+	border: 1px dashed var(--pc-border);
+	border-radius: 8px;
+	background: var(--pc-surface-alt);
+	color: var(--pc-muted);
+	text-align: center;
+}
+
+/* ---------- Tables --------------------------------------------------------- */
+
+.padelcamps-admin .pc-panel table.widefat {
+	border: 1px solid var(--pc-border);
+	border-collapse: separate;
+	border-spacing: 0;
+	border-radius: 8px;
+	box-shadow: none;
+	overflow: hidden;
+}
+
+.padelcamps-admin .pc-panel table.widefat thead th,
+.padelcamps-admin .pc-panel table.widefat thead td {
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--pc-border);
+	background: var(--pc-surface-alt);
+	color: var(--pc-muted);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: .02em;
+	text-transform: uppercase;
+}
+
+.padelcamps-admin .pc-panel table.widefat td,
+.padelcamps-admin .pc-panel table.widefat tbody th {
+	padding: 12px;
+	vertical-align: middle;
+}
+
+.padelcamps-admin .pc-panel table.widefat tbody tr:last-child > * {
+	border-bottom: 0;
+}
+
+.padelcamps-admin .pc-panel table.widefat.striped > tbody > :nth-child(odd) {
+	background-color: #fafafa;
+}
+
+.padelcamps-admin .pc-panel table.widefat tbody tr:hover > * {
+	background-color: #f3f6ff;
+}
+
+.padelcamps-admin .pc-col-id {
+	width: 56px;
+}
+
+.padelcamps-admin .pc-muted {
+	color: var(--pc-muted);
+	font-size: 12px;
+}
+
+.padelcamps-admin .pc-narrow {
+	max-width: 620px;
+}
+
+.padelcamps-admin .pc-narrow--wide {
+	max-width: 860px;
+}
+
+.padelcamps-admin .pc-key {
+	width: 220px;
+}
+
+/* Players grid (new registration / edit players): label column + 2 equal columns. */
+.padelcamps-admin .pc-players {
+	width: 100%;
+	max-width: 860px;
+	table-layout: fixed;
+}
+
+.padelcamps-admin .pc-players thead th:first-child,
+.padelcamps-admin .pc-players tbody th {
+	width: 150px;
+}
+
+.padelcamps-admin .pc-players tbody th {
+	padding: 14px 12px;
+	background: var(--pc-surface-alt);
+	font-weight: 600;
+	vertical-align: top;
+}
+
+.padelcamps-admin .pc-players tbody td {
+	padding: 10px 12px;
+	vertical-align: top;
+}
+
+.padelcamps-admin .pc-players tbody tr:hover > * {
+	background-color: transparent;
+}
+
+.padelcamps-admin .pc-players tbody tr:hover > th {
+	background-color: var(--pc-surface-alt);
+}
+
+.padelcamps-admin .pc-players input {
+	display: block;
+	width: 100%;
+	max-width: none;
+}
+
+.padelcamps-admin .pc-players .pc-error {
+	margin: 4px 0 0;
+}
+
+.padelcamps-admin .pc-details {
+	max-width: 860px;
+	margin: 18px 0;
+}
+
+.padelcamps-admin .pc-details > summary {
+	display: inline-flex;
+	cursor: pointer;
+}
+
+.padelcamps-admin .pc-details > form {
+	margin-top: 14px;
+}
+
+/* ---------- Badges --------------------------------------------------------- */
+
+.padelcamps-admin .pc-badge {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: #f0f0f1;
+	color: #3c434a;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.padelcamps-admin .pc-badge--ok,
+.padelcamps-admin .pc-badge--registration_open,
+.padelcamps-admin .pc-badge--in_progress {
+	background: #dcfce7;
+	color: #14532d;
+}
+
+.padelcamps-admin .pc-badge--warn,
+.padelcamps-admin .pc-badge--draft {
+	background: #fef3c7;
+	color: #78350f;
+}
+
+.padelcamps-admin .pc-badge--info,
+.padelcamps-admin .pc-badge--drawn,
+.padelcamps-admin .pc-badge--registration_closed {
+	background: #e0e7ff;
+	color: #312e81;
+}
+
+.padelcamps-admin .pc-badge--bad {
+	background: #fee2e2;
+	color: #7f1d1d;
+}
+
+.padelcamps-admin .pc-badge--muted,
+.padelcamps-admin .pc-badge--finished {
+	background: #e5e7eb;
+	color: #374151;
+}
+
+.padelcamps-admin .pc-wrap > h1 .pc-badge {
+	font-size: 12px;
+	font-weight: 500;
+	vertical-align: middle;
+}
+
+/* ---------- Small screens -------------------------------------------------- */
+
+@media (max-width: 782px) {
+	.padelcamps-admin {
+		--pc-pad: 18px;
+	}
+
+	.padelcamps-admin .pc-tabs {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.padelcamps-admin .pc-tabs .nav-tab {
+		white-space: nowrap;
+	}
+
+	.padelcamps-admin .pc-panel .form-table > tbody > tr > th,
+	.padelcamps-admin .pc-panel .form-table > tbody > tr > td {
+		display: block;
+		width: auto;
+		padding-right: 0;
+	}
+
+	.padelcamps-admin .pc-panel .form-table > tbody > tr > th {
+		padding-bottom: 0;
+	}
+
+	.padelcamps-admin .pc-panel .form-table > tbody > tr + tr > td {
+		border-top: 0;
+	}
+
+	.padelcamps-admin .pc-toolbar select,
+	.padelcamps-admin .pc-toolbar input[type="search"] {
+		flex: 1 1 100%;
+		max-width: none;
+	}
+
+	.padelcamps-admin .pc-toolbar__end {
+		margin-left: 0;
+	}
+
+	.padelcamps-admin .pc-players {
+		table-layout: auto;
+	}
+
+	.padelcamps-admin .pc-players input {
+		min-width: 150px;
+	}
+}
