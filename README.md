@@ -173,6 +173,21 @@ Regles per contribuir:
 - Res de `src/Engine/` ni `I18n/Catalog.php` pot cridar funcions de WordPress.
 - Les classes amb WP comencen amb `defined( 'ABSPATH' ) || exit;`.
 
+## 📦 Publicar una versió
+
+El ZIP instal·lable es genera sol amb GitHub Actions ([release.yml](.github/workflows/release.yml)):
+
+1. Puja la versió a `padelcamps.php` (capçalera `Version:` **i** constant `PADELCAMPS_VERSION`).
+2. Fes commit i push a `main`.
+3. Crea i puja el tag:
+
+   ```bash
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+GitHub comprova que el tag coincideix amb la versió del plugin, construeix `padelcamps-0.2.0.zip` i el penja a la [release](https://github.com/mananipons/padelcamps/releases).
+
 ## 🌍 Traduccions
 
 Capa pròpia, sense `.po/.mo`. Les cadenes font són en català; cada cadena nova s'ha d'afegir a `languages/es.php` i `languages/en.php`. `php tests/run.php` falla si en falta alguna, si en sobra o si els marcadors `%s/%d` no coincideixen.
