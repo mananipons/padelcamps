@@ -137,7 +137,7 @@ padelcamps/
 - **Jugadors sense compte WP:** *magic links* amb token per parella.
 - Espai de noms PHP `PadelCamps\`, autoloader PSR-4 mínim.
 
-Detall complet, decisions i registre de canvis a [`AGENTS.md`](AGENTS.md).
+
 
 ## 🧪 Desenvolupament
 
