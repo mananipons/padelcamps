@@ -1,0 +1,100 @@
+/* PadelCamps TV screen (club monitor). Big type, dark background, no scrolling. */
+html,
+body.pc-tv-body {
+	margin: 0;
+	height: 100%;
+	background: #0f1724;
+	color: #e9eef6;
+	font: 18px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	overflow: hidden;
+}
+.pc-tv {
+	--pc-border: #2b3a52;
+	--pc-muted: #9fb0c8;
+	--pc-win: #6ee7a8;
+	--pc-q: #1c2b44;
+	--pc-box: #172238;
+	height: 100vh;
+	padding: 1.2rem 1.6rem;
+	box-sizing: border-box;
+}
+.pc-tv .pc-live-body {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+.pc-tv-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	margin-bottom: 1rem;
+}
+.pc-tv-head h1 {
+	margin: 0;
+	font-size: 1.9rem;
+}
+.pc-tv-clock {
+	font-size: 2.2rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+.pc-tv-grid {
+	flex: 1;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: minmax(22rem, 1fr) 2fr;
+	gap: 1.6rem;
+}
+.pc-tv-next,
+.pc-tv-panels {
+	min-height: 0;
+	overflow: hidden;
+}
+.pc-tv-next h2 {
+	margin: 0 0 0.8rem;
+	font-size: 1.3rem;
+	color: var(--pc-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.pc-tv .pc-sched-item {
+	font-size: 1.05rem;
+}
+.pc-tv-panel {
+	display: none;
+}
+.pc-tv-panel.is-active {
+	display: block;
+	animation: pc-tv-in 0.6s ease-out;
+}
+@keyframes pc-tv-in {
+	from { opacity: 0; transform: translateY(8px); }
+	to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.pc-tv-panel.is-active { animation: none; }
+}
+.pc-tv .pc-draw-cat h2 {
+	margin: 0 0 0.6rem;
+	font-size: 1.6rem;
+}
+.pc-tv .pc-draw-cat h3 {
+	font-size: 1.1rem;
+	color: var(--pc-muted);
+}
+.pc-tv .pc-group-matches,
+.pc-tv .pc-rounds-nav,
+.pc-tv .pc-draw-notice + .pc-rounds-nav {
+	display: none;
+}
+.pc-tv .pc-bracket {
+	overflow: hidden;
+	grid-template-columns: repeat(var(--pc-rounds), minmax(0, 1fr));
+}
+.pc-tv .pc-standings td,
+.pc-tv .pc-standings th {
+	border-color: var(--pc-border);
+}
+.pc-tv a {
+	color: inherit;
+}

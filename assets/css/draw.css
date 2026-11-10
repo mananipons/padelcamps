@@ -1,0 +1,328 @@
+/* PadelCamps public groups and brackets. Inherits the theme's fonts and colors. */
+.pc-draw {
+	--pc-accent: var(--wp--preset--color--primary, #1d4ed8);
+	--pc-border: #d5d9e0;
+	--pc-muted: #5b6472;
+	--pc-win: #0f5132;
+	--pc-q: #eef4ff;
+	--pc-box: #fff;
+}
+.pc-draw-cats,
+.pc-rounds-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin: 0 0 1rem;
+}
+.pc-draw-cats a,
+.pc-rounds-nav a {
+	border: 1px solid var(--pc-border);
+	border-radius: 999px;
+	padding: 0.25rem 0.8rem;
+	text-decoration: none;
+	font-size: 0.9em;
+}
+.pc-draw-cat {
+	margin: 0 0 2.5rem;
+}
+.pc-draw-notice {
+	color: var(--pc-muted);
+	font-size: 0.95em;
+}
+
+/* Groups */
+.pc-groups {
+	display: grid;
+	gap: 1.25rem;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+}
+.pc-group {
+	border: 1px solid var(--pc-border);
+	border-radius: 10px;
+	padding: 0.8rem 1rem;
+	background: var(--pc-box);
+}
+.pc-group h4 {
+	margin: 0 0 0.5rem;
+}
+.pc-table-wrap {
+	overflow-x: auto;
+}
+.pc-standings {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+.pc-standings th,
+.pc-standings td {
+	padding: 0.35rem 0.4rem;
+	border-bottom: 1px solid var(--pc-border);
+	text-align: center;
+	white-space: nowrap;
+}
+.pc-standings .pc-name,
+.pc-standings th:nth-child(2) {
+	text-align: left;
+	white-space: normal;
+}
+.pc-standings tr.is-qualified td {
+	background: var(--pc-q);
+}
+.pc-group-matches {
+	list-style: none;
+	margin: 0.8rem 0 0;
+	padding: 0;
+	display: grid;
+	gap: 0.4rem;
+}
+
+/* Match box (groups and bracket) */
+.pc-m {
+	position: relative;
+	border: 1px solid var(--pc-border);
+	border-radius: 8px;
+	background: var(--pc-box);
+	padding: 0.35rem 0.55rem;
+	font-size: 0.9em;
+}
+.pc-m-n {
+	position: absolute;
+	top: -0.6rem;
+	left: 0.5rem;
+	background: var(--pc-box);
+	padding: 0 0.25rem;
+	font-size: 0.75em;
+	color: var(--pc-muted);
+}
+.pc-m-side {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding: 0.15rem 0;
+}
+.pc-m-side + .pc-m-side {
+	border-top: 1px dashed var(--pc-border);
+}
+.pc-m-side.is-winner {
+	font-weight: 700;
+	color: var(--pc-win);
+}
+.pc-m-side.is-placeholder .pc-m-name {
+	color: var(--pc-muted);
+	font-style: italic;
+}
+.pc-m-name small {
+	font-style: normal;
+}
+.pc-m-sets {
+	display: flex;
+	gap: 0.35rem;
+	font-variant-numeric: tabular-nums;
+}
+.pc-m-sets span {
+	min-width: 1.1em;
+	text-align: center;
+}
+.pc-m-note {
+	display: block;
+	font-size: 0.8em;
+	color: var(--pc-muted);
+}
+.pc-m-when {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 0.78em;
+	color: var(--pc-muted);
+}
+.pc-m.is-bye {
+	opacity: 0.75;
+}
+
+/* Bracket: columns on desktop, one round per screen (swipe) on mobile */
+.pc-bracket {
+	display: grid;
+	grid-template-columns: repeat(var(--pc-rounds), minmax(210px, 1fr));
+	gap: 1.5rem;
+	overflow-x: auto;
+	padding: 0.8rem 0.2rem 0.5rem;
+}
+.pc-round {
+	display: flex;
+	flex-direction: column;
+}
+.pc-round h4 {
+	margin: 0 0 0.8rem;
+	font-size: 0.95em;
+	text-align: center;
+}
+.pc-round-matches {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
+	gap: 1rem;
+}
+/* Short connector towards the next round */
+.pc-round:not(:last-child) .pc-m::after {
+	content: "";
+	position: absolute;
+	right: -0.75rem;
+	top: 50%;
+	width: 0.75rem;
+	border-top: 1px solid var(--pc-border);
+}
+.pc-rounds-nav {
+	display: none;
+}
+@media (max-width: 700px) {
+	.pc-rounds-nav {
+		display: flex;
+	}
+	.pc-bracket {
+		grid-template-columns: none;
+		grid-auto-flow: column;
+		grid-auto-columns: 88%;
+		scroll-snap-type: x mandatory;
+	}
+	.pc-round {
+		scroll-snap-align: start;
+	}
+	.pc-round-matches {
+		justify-content: flex-start;
+	}
+	.pc-round:not(:last-child) .pc-m::after {
+		display: none;
+	}
+}
+
+/* Find your pair + live indicator */
+.pc-find-wrap {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.8rem;
+	margin: 0 0 1.2rem;
+}
+.pc-find-label {
+	font-weight: 600;
+	font-size: 0.95em;
+}
+.pc-find {
+	flex: 1 1 14rem;
+	max-width: 22rem;
+	padding: 0.5rem 0.7rem;
+	font: inherit;
+	border: 1px solid var(--pc-border);
+	border-radius: 999px;
+}
+.pc-find-count {
+	color: var(--pc-muted);
+	font-size: 0.9em;
+}
+.pc-live-dot {
+	margin-left: auto;
+	font-size: 0.8em;
+	color: var(--pc-muted);
+}
+.pc-live-dot::before {
+	content: "";
+	display: inline-block;
+	width: 0.55em;
+	height: 0.55em;
+	margin-right: 0.35em;
+	border-radius: 50%;
+	background: #22a06b;
+	vertical-align: 0.05em;
+}
+.pc-live-dot.is-flash::before {
+	animation: pc-flash 1.2s ease-out;
+}
+@keyframes pc-flash {
+	0% { box-shadow: 0 0 0 0 rgba(34, 160, 107, 0.6); }
+	100% { box-shadow: 0 0 0 0.6em rgba(34, 160, 107, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.pc-live-dot.is-flash::before { animation: none; }
+}
+.pc-draw .is-mine {
+	background: #fff3c4;
+	border-radius: 4px;
+	outline: 2px solid #f0c000;
+}
+.pc-filtering .pc-m:not(.is-mine-match) {
+	opacity: 0.35;
+}
+.pc-filtering .pc-standings tr:not(:has(.is-mine)) td {
+	opacity: 0.55;
+}
+
+/* Order of play */
+.pc-day h3 {
+	margin: 1.4rem 0 0.6rem;
+}
+.pc-sched {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.5rem;
+}
+.pc-sched-item {
+	display: grid;
+	grid-template-columns: 5.5rem 1fr auto;
+	grid-template-areas: "when what score" "when pairs score";
+	gap: 0.1rem 0.8rem;
+	align-items: center;
+}
+.pc-sched-when {
+	grid-area: when;
+	display: grid;
+	text-align: center;
+	line-height: 1.2;
+}
+.pc-sched-when strong {
+	font-size: 1.15em;
+}
+.pc-sched-when span,
+.pc-sched-what {
+	color: var(--pc-muted);
+	font-size: 0.82em;
+}
+.pc-sched-what {
+	grid-area: what;
+}
+.pc-sched-pairs {
+	grid-area: pairs;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 0.4rem;
+	align-items: baseline;
+}
+.pc-sched-vs {
+	color: var(--pc-muted);
+	font-size: 0.8em;
+}
+.pc-sched-pair.is-winner {
+	font-weight: 700;
+	color: var(--pc-win);
+}
+.pc-sched-pair.is-placeholder {
+	color: var(--pc-muted);
+	font-style: italic;
+}
+.pc-sched-score {
+	grid-area: score;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	font-weight: 600;
+}
+.pc-draw-cats a.is-today {
+	border-color: var(--pc-accent);
+	font-weight: 600;
+}
+@media (max-width: 520px) {
+	.pc-sched-item {
+		grid-template-columns: 4.2rem 1fr;
+		grid-template-areas: "when what" "when pairs" "when score";
+	}
+}

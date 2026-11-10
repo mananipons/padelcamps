@@ -1,0 +1,169 @@
+/* PadelCamps "my matches" page (magic link). Standalone, mobile-first. */
+:root {
+	--pc-bg: #f4f6f9;
+	--pc-card: #fff;
+	--pc-text: #1d2433;
+	--pc-muted: #5b6472;
+	--pc-border: #d8dde6;
+	--pc-accent: #1d4ed8;
+	--pc-ok: #0f5132;
+	--pc-ok-bg: #e7f6ec;
+	--pc-err: #842029;
+	--pc-err-bg: #fbe9eb;
+}
+* {
+	box-sizing: border-box;
+}
+body.pc-pair {
+	margin: 0;
+	background: var(--pc-bg);
+	color: var(--pc-text);
+	font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.pc-wrap {
+	max-width: 34rem;
+	margin: 0 auto;
+	padding: 1rem;
+}
+.pc-head h1 {
+	font-size: 1.3rem;
+	margin: 0.2rem 0 1rem;
+}
+.pc-tournament,
+.pc-when,
+.pc-foot,
+.pc-empty {
+	color: var(--pc-muted);
+	font-size: 0.9rem;
+	margin: 0;
+}
+.pc-foot {
+	margin-top: 1.5rem;
+	text-align: center;
+}
+.pc-card {
+	background: var(--pc-card);
+	border: 1px solid var(--pc-border);
+	border-radius: 12px;
+	padding: 0.9rem 1rem;
+	margin: 0 0 0.9rem;
+}
+.pc-card h2 {
+	font-size: 1rem;
+	margin: 0 0 0.15rem;
+}
+.pc-vs {
+	margin: 0.6rem 0;
+	display: grid;
+	gap: 0.15rem;
+}
+.pc-vs-sep {
+	color: var(--pc-muted);
+	font-size: 0.8rem;
+}
+.pc-you,
+.pc-tbd {
+	color: var(--pc-muted);
+	font-size: 0.85rem;
+}
+.pc-result {
+	font-weight: 700;
+	margin: 0.4rem 0 0;
+}
+.pc-result.is-win {
+	color: var(--pc-ok);
+}
+.pc-result.is-loss {
+	color: var(--pc-muted);
+}
+.pc-state {
+	background: var(--pc-bg);
+	border-radius: 8px;
+	padding: 0.5rem 0.7rem;
+	margin: 0.5rem 0;
+}
+.pc-msg {
+	border-radius: 10px;
+	padding: 0.7rem 0.9rem;
+	margin: 0 0 1rem;
+}
+.pc-msg.is-ok {
+	background: var(--pc-ok-bg);
+	color: var(--pc-ok);
+}
+.pc-msg.is-error {
+	background: var(--pc-err-bg);
+	color: var(--pc-err);
+}
+.pc-sets {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0.5rem 0;
+}
+.pc-sets th {
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-align: left;
+	padding: 0.25rem;
+	color: var(--pc-muted);
+}
+.pc-sets thead th {
+	text-align: center;
+}
+.pc-sets td {
+	padding: 0.25rem;
+	width: 34%;
+}
+.pc-sets input {
+	width: 100%;
+	font-size: 1.25rem;
+	text-align: center;
+	padding: 0.45rem;
+	border: 1px solid var(--pc-border);
+	border-radius: 8px;
+}
+.pc-special {
+	display: block;
+	font-size: 0.85rem;
+	color: var(--pc-muted);
+	margin: 0.4rem 0 0.8rem;
+}
+.pc-special select {
+	display: block;
+	width: 100%;
+	margin-top: 0.25rem;
+	padding: 0.5rem;
+	font-size: 1rem;
+	border: 1px solid var(--pc-border);
+	border-radius: 8px;
+	background: #fff;
+}
+.pc-actions {
+	display: flex;
+	gap: 0.5rem;
+	margin: 0.5rem 0;
+}
+.pc-actions form {
+	flex: 1;
+}
+.pc-btn {
+	width: 100%;
+	padding: 0.75rem;
+	font-size: 1rem;
+	font-weight: 600;
+	border-radius: 10px;
+	border: 1px solid var(--pc-border);
+	background: #fff;
+	color: var(--pc-text);
+	cursor: pointer;
+}
+.pc-btn.is-primary {
+	background: var(--pc-accent);
+	border-color: var(--pc-accent);
+	color: #fff;
+}
+details summary {
+	cursor: pointer;
+	color: var(--pc-accent);
+	margin: 0.4rem 0;
+}

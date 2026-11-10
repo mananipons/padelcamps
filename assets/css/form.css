@@ -1,0 +1,138 @@
+/* PadelCamps public registration form. Inherits the theme's fonts and colors. */
+.pc-form-wrap {
+	--pc-accent: var(--wp--preset--color--primary, #1d4ed8);
+	--pc-border: #c9ced6;
+	--pc-error: #b42318;
+	--pc-muted: #5b6472;
+	max-width: 44rem;
+	margin: 0 auto;
+}
+.pc-form fieldset {
+	border: 1px solid var(--pc-border);
+	border-radius: 8px;
+	margin: 0 0 1.25rem;
+	padding: 1rem 1.1rem 0.4rem;
+}
+.pc-form legend {
+	font-weight: 600;
+	padding: 0 0.4rem;
+}
+.pc-field {
+	margin: 0 0 1rem;
+}
+.pc-field label {
+	display: block;
+	font-weight: 500;
+	margin: 0 0 0.3rem;
+}
+.pc-field input[type="text"],
+.pc-field input[type="email"],
+.pc-field input[type="tel"],
+.pc-field select,
+.pc-field textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.6rem 0.7rem;
+	font: inherit;
+	border: 1px solid var(--pc-border);
+	border-radius: 6px;
+	background: #fff;
+	color: inherit;
+}
+.pc-field [aria-invalid="true"] {
+	border-color: var(--pc-error);
+}
+.pc-error {
+	color: var(--pc-error);
+	font-size: 0.9em;
+	margin: 0.3rem 0 0;
+}
+.pc-req {
+	color: var(--pc-error);
+}
+.pc-legend-note,
+.pc-privacy {
+	color: var(--pc-muted);
+	font-size: 0.9em;
+}
+.pc-availability {
+	display: grid;
+	gap: 0 1rem;
+	grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+	.pc-availability {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+.pc-pack-players {
+	display: grid;
+	gap: 0 1.5rem;
+	grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+	.pc-pack-players {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+.pc-pack-player h4 {
+	margin: 0.4rem 0 0.8rem;
+	font-size: 1em;
+}
+.pc-check {
+	margin: 0 0 0.8rem;
+}
+.pc-check label {
+	display: flex;
+	gap: 0.6rem;
+	align-items: flex-start;
+}
+.pc-check input {
+	margin-top: 0.25rem;
+}
+.pc-submit {
+	cursor: pointer;
+	padding: 0.75rem 1.6rem;
+	font: inherit;
+	font-weight: 600;
+	color: #fff;
+	background: var(--pc-accent);
+	border: 0;
+	border-radius: 6px;
+}
+.pc-submit:hover,
+.pc-submit:focus-visible {
+	filter: brightness(0.92);
+}
+.pc-alert,
+.pc-success,
+.pc-notice {
+	border-radius: 8px;
+	padding: 0.9rem 1.1rem;
+	margin: 0 0 1.25rem;
+}
+.pc-alert {
+	border: 1px solid var(--pc-error);
+	color: var(--pc-error);
+}
+.pc-alert ul {
+	margin: 0;
+	padding-left: 1.2rem;
+}
+.pc-success {
+	border: 1px solid #2f855a;
+	background: #f0fff4;
+	color: #1f4d36;
+}
+.pc-notice {
+	border: 1px solid var(--pc-border);
+	background: #f6f7f9;
+}
+/* Honeypot: invisible to people, visible to naive bots. */
+.pc-hp {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
