@@ -63,8 +63,15 @@ body.pc-tv-body {
 .pc-tv-panel {
 	display: none;
 }
+.pc-tv-panels {
+	display: flex;
+	flex-direction: column;
+}
 .pc-tv-panel.is-active {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 	animation: pc-tv-in 0.6s ease-out;
 }
 @keyframes pc-tv-in {
@@ -97,4 +104,68 @@ body.pc-tv-body {
 }
 .pc-tv a {
 	color: inherit;
+}
+
+/* Fit one category in the screen height: groups in a single row that scrolls
+   like a marquee, so the brackets get the rest of the height. */
+.pc-tv .pc-draw-cat {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+}
+.pc-tv .pc-draw-cat > h3 {
+	margin: 0.6rem 0 0.4rem;
+}
+.pc-tv .pc-groups {
+	display: flex;
+	flex: none;
+	gap: 1rem;
+	overflow: hidden;
+}
+.pc-tv .pc-group {
+	flex: 0 0 22rem;
+	padding: 0.5rem 0.8rem;
+	font-size: 0.85rem;
+}
+.pc-tv .pc-group h4 {
+	margin: 0 0 0.3rem;
+}
+.pc-tv .pc-groups-track {
+	display: flex;
+	gap: 1rem;
+	width: max-content;
+	will-change: transform;
+}
+.pc-tv .pc-groups-track.is-scrolling {
+	animation: pc-tv-marquee var(--pc-dur, 60s) linear infinite;
+}
+@keyframes pc-tv-marquee {
+	to { transform: translateX(calc(var(--pc-shift, 0px) * -1)); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.pc-tv .pc-groups {
+		flex-wrap: wrap;
+	}
+}
+.pc-tv .pc-bracket {
+	flex: 1;
+	min-height: 0;
+	padding: 0.4rem 0.2rem 0;
+	grid-template-rows: minmax(0, 1fr);
+}
+.pc-tv .pc-round h4 {
+	margin: 0 0 0.4rem;
+}
+.pc-tv .pc-round-matches {
+	min-height: 0;
+	gap: 0.3rem;
+}
+.pc-tv .pc-m {
+	padding: 0.15rem 0.5rem;
+	font-size: 0.85em;
+}
+.pc-tv .pc-m-side {
+	padding: 0.05rem 0;
 }

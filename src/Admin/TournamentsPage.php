@@ -1,6 +1,8 @@
 <?php
 namespace PadelCamps\Admin;
 
+use PadelCamps\Db\RankingRepository;
+use PadelCamps\Db\SeasonRepository;
 use PadelCamps\Db\TournamentRepository;
 use PadelCamps\Engine\CategoryBulk;
 use PadelCamps\Engine\FormatTemplates;
@@ -25,9 +27,11 @@ final class TournamentsPage {
 	private ScheduleTab $schedule_tab;
 	private ResultsTab $results_tab;
 	private CommunicationTab $comms_tab;
+	private SeasonRepository $seasons;
 
-	public function __construct( TournamentRepository $repo, RegistrationsView $registrations ) {
+	public function __construct( TournamentRepository $repo, RegistrationsView $registrations, SeasonRepository $seasons ) {
 		$this->repo          = $repo;
+		$this->seasons       = $seasons;
 		$this->form_tab      = new FormTab( $repo );
 		$this->registrations = $registrations;
 		$this->draw_tab      = new DrawTab( $repo );
@@ -130,6 +134,7 @@ final class TournamentsPage {
 			'err_status'       => array( 'error', __( 'No es pot canviar a aquest estat.', 'padelcamps' ) ),
 			'category_locked'  => array( 'error', __( 'Aquesta categoria ja té partits: no se’n pot canviar el format.', 'padelcamps' ) ),
 			'category_in_use'  => array( 'error', __( 'Aquesta categoria té inscripcions i no es pot eliminar.', 'padelcamps' ) ),
+			'points_published' => array( 'error', __( 'Aquest torneig té punts publicats al rànquing. Retira’ls a la pestanya Resultats abans de canviar la temporada, el rànquing o la categoria de rànquing.', 'padelcamps' ) ),
 			'err_confirm_name' => array( 'error', __( 'El nom no coincideix: no s’ha eliminat res.', 'padelcamps' ) ),
 			'not_found'        => array( 'error', __( 'No s’ha trobat el torneig.', 'padelcamps' ) ),
 		);
@@ -442,6 +447,7 @@ final class TournamentsPage {
 		printf( '<option value="full"%s>%s</option>', selected( $mode, 'full', false ), esc_html__( 'Nom i cognoms complets', 'padelcamps' ) );
 		printf( '<option value="initials"%s>%s</option>', selected( $mode, 'initials', false ), esc_html__( 'Nom i inicial del primer cognom (Anna P.)', 'padelcamps' ) );
 		echo '</select><p class="description">' . esc_html__( 'S’aplica a la web i a l’API pública. Les dades de contacte mai es publiquen.', 'padelcamps' ) . '</p></td></tr>';
+		$this->season_rows( $t );
 		echo '</table>';
 		printf( '<p><button type="submit" class="button button-primary">%s</button></p>', $is_new ? esc_html__( 'Crea el torneig', 'padelcamps' ) : esc_html__( 'Desa el torneig', 'padelcamps' ) );
 		echo '</form>';
@@ -450,6 +456,41 @@ final class TournamentsPage {
 			return;
 		}
 		$this->categories_section( $t );
+	}
+
+	/**
+	 * Season and "counts for the ranking" rows of the general data form. A new tournament
+	 * starts in the current season with points; an express or one-off tournament is
+	 * simply left unchecked.
+	 */
+	private function season_rows( ?array $t ): void {
+		$seasons    = $this->seasons->all();
+		$season_id  = $t ? (int) ( $t['season_id'] ?? 0 ) : (int) ( $this->seasons->current()['id'] ?? 0 );
+		$counts     = $t ? ! empty( $t['counts_for_ranking'] ) : $season_id > 0;
+
+		echo '<tr><th scope="row"><label for="pc-season">' . esc_html__( 'Temporada', 'padelcamps' ) . '</label></th><td>';
+		if ( ! $seasons ) {
+			echo '<p class="description">' . wp_kses(
+				sprintf(
+					/* translators: %s: link to the seasons screen */
+					__( 'Encara no hi ha cap temporada. Crea’n una a %s per fer un rànquing.', 'padelcamps' ),
+					'<a href="' . esc_url( SeasonsPage::url( array( 'action' => 'new' ) ) ) . '">' . esc_html__( 'Temporades', 'padelcamps' ) . '</a>'
+				),
+				array( 'a' => array( 'href' => array() ) )
+			) . '</p></td></tr>';
+			return;
+		}
+		echo '<select id="pc-season" name="season_id"><option value="0">' . esc_html__( '— Cap temporada —', 'padelcamps' ) . '</option>';
+		foreach ( $seasons as $season ) {
+			printf( '<option value="%d"%s>%s</option>', (int) $season['id'], selected( $season_id, (int) $season['id'], false ), esc_html( $season['name'] ) );
+		}
+		echo '</select></td></tr>';
+
+		echo '<tr><th scope="row">' . esc_html__( 'Rànquing', 'padelcamps' ) . '</th><td><label>';
+		printf( '<input type="checkbox" id="pc-counts-ranking" name="counts_for_ranking" value="1"%s> ', checked( $counts, true, false ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- literal.
+		echo esc_html__( 'Aquest torneig dona punts per al rànquing de la temporada', 'padelcamps' ) . '</label>';
+		echo '<p class="description">' . esc_html__( 'Desmarca-ho en un torneig puntual o exprés que no compta per al rànquing.', 'padelcamps' ) . '</p></td></tr>';
+		echo '<script>(function(){var s=document.getElementById("pc-season"),c=document.getElementById("pc-counts-ranking");if(!s||!c)return;function u(){c.disabled=s.value==="0";if(c.disabled)c.checked=false;}s.addEventListener("change",function(){var was=c.disabled;u();if(was&&s.value!=="0")c.checked=true;});u();})();</script>';
 	}
 
 	private function row_text( string $name, string $label, string $value, bool $required = false, string $type = 'text' ): void {
@@ -508,7 +549,7 @@ final class TournamentsPage {
 			echo '<th>' . esc_html__( 'Format', 'padelcamps' ) . '</th>';
 			echo '<th>' . esc_html__( 'Fases', 'padelcamps' ) . '</th>';
 			echo '<th>' . esc_html__( 'Places', 'padelcamps' ) . '</th>';
-			echo '<th>' . esc_html__( 'Preu', 'padelcamps' ) . '</th>';
+			echo '<th>' . esc_html__( 'Preu per jugador', 'padelcamps' ) . '</th>';
 			echo '<th></th></tr></thead><tbody>';
 			foreach ( $categories as $cat ) {
 				$cid = (int) $cat['id'];
@@ -561,6 +602,8 @@ final class TournamentsPage {
 		}
 		echo '</td></tr>';
 
+		$this->ranking_category_row( $t, $editing['ranking_category_id'] ?? null );
+
 		echo '<tr data-opt="advance"><th scope="row"><label for="pc-cat-advance">' . esc_html__( 'Classificats per grup', 'padelcamps' ) . '</label></th><td>';
 		echo '<select id="pc-cat-advance" name="cat_advance"' . $ko_dis . '>'; // phpcs:ignore WordPress.Security.EscapeOutput -- literal.
 		for ( $n = 1; $n <= 4; $n++ ) {
@@ -612,7 +655,7 @@ final class TournamentsPage {
 		echo '<tr><th scope="row"><label for="pc-cat-max">' . esc_html__( 'Places (0 = sense límit)', 'padelcamps' ) . '</label></th><td>';
 		printf( '<input type="number" min="0" id="pc-cat-max" name="cat_max_teams" value="%d" class="small-text"></td></tr>', (int) ( $editing['max_teams'] ?? 0 ) );
 
-		echo '<tr><th scope="row"><label for="pc-cat-price">' . esc_html__( 'Preu per inscripció (€)', 'padelcamps' ) . '</label></th><td>';
+		echo '<tr><th scope="row"><label for="pc-cat-price">' . esc_html__( 'Preu per jugador (€)', 'padelcamps' ) . '</label></th><td>';
 		printf( '<input type="number" min="0" step="0.01" id="pc-cat-price" name="cat_price" value="%s" class="small-text"></td></tr>', esc_attr( number_format( (float) ( $editing['price'] ?? 0 ), 2, '.', '' ) ) );
 		echo '</table>';
 
@@ -624,6 +667,32 @@ final class TournamentsPage {
 
 		// Show only the options that the selected format supports.
 		echo '<script>(function(){var s=document.getElementById("pc-cat-template");if(!s)return;function u(){var o=s.options[s.selectedIndex];var a=(o.getAttribute("data-options")||"").split(" ");document.querySelectorAll("[data-opt]").forEach(function(r){r.style.display=a.indexOf(r.getAttribute("data-opt"))>-1?"":"none";});document.querySelectorAll("[data-tpl]").forEach(function(p){p.style.display=p.getAttribute("data-tpl")===s.value?"":"none";});}s.addEventListener("change",u);u();})();</script>';
+	}
+
+	/** Link a tournament category to one of the season's ranking categories (1a, B+…). */
+	private function ranking_category_row( array $t, $current ): void {
+		if ( empty( $t['season_id'] ) || empty( $t['counts_for_ranking'] ) ) {
+			return;
+		}
+		$options = $this->seasons->ranking_categories( (int) $t['season_id'] );
+
+		echo '<tr><th scope="row"><label for="pc-cat-ranking">' . esc_html__( 'Categoria de rànquing', 'padelcamps' ) . '</label></th><td>';
+		if ( ! $options ) {
+			echo '<p class="description">' . wp_kses(
+				sprintf(
+					/* translators: %s: link to the season screen */
+					__( 'La temporada encara no té categories de rànquing. Afegeix-les a %s.', 'padelcamps' ),
+					'<a href="' . esc_url( SeasonsPage::url( array( 'action' => 'edit', 'id' => (int) $t['season_id'] ) ) ) . '">' . esc_html__( 'Temporades', 'padelcamps' ) . '</a>'
+				),
+				array( 'a' => array( 'href' => array() ) )
+			) . '</p></td></tr>';
+			return;
+		}
+		echo '<select id="pc-cat-ranking" name="cat_ranking_category"><option value="0">' . esc_html__( '— Sense rànquing —', 'padelcamps' ) . '</option>';
+		foreach ( $options as $rc ) {
+			printf( '<option value="%d"%s>%s</option>', (int) $rc['id'], selected( (int) $current, (int) $rc['id'], false ), esc_html( $rc['name'] ) );
+		}
+		echo '</select><p class="description">' . esc_html__( 'Els punts d’aquesta categoria van al rànquing de la categoria triada. Sense categoria de rànquing, no donen punts.', 'padelcamps' ) . '</p></td></tr>';
 	}
 
 	/** "Edit selected categories" panel: every field starts at "keep". */
@@ -661,7 +730,7 @@ final class TournamentsPage {
 		$select( 'b_points', __( 'Punts del super tie-break', 'padelcamps' ), $points );
 		$select( 'b_criteria', __( 'Desempats de la classificació', 'padelcamps' ), array( 'sets' => __( 'Victòries → diferència de sets → diferència de jocs → enfrontament directe', 'padelcamps' ), 'direct' => __( 'Victòries → enfrontament directe → diferència de sets → diferència de jocs', 'padelcamps' ) ) );
 		echo '<label class="pc-bulk-field"><span>' . esc_html__( 'Places (0 = sense límit)', 'padelcamps' ) . '</span><input type="number" min="0" name="b_max_teams" class="small-text" placeholder="—"></label>';
-		echo '<label class="pc-bulk-field"><span>' . esc_html__( 'Preu per inscripció (€)', 'padelcamps' ) . '</span><input type="number" min="0" step="0.01" name="b_price" class="small-text" placeholder="—"></label>';
+		echo '<label class="pc-bulk-field"><span>' . esc_html__( 'Preu per jugador (€)', 'padelcamps' ) . '</span><input type="number" min="0" step="0.01" name="b_price" class="small-text" placeholder="—"></label>';
 		echo '</div>';
 		echo '<p class="description">' . esc_html__( 'El preu nou només afecta les inscripcions que arribin a partir d’ara. El format i els desempats no es poden canviar en categories amb partits; la consolació i els classificats, sí, fins que es genera el quadre final.', 'padelcamps' ) . '</p>';
 		echo '<p><button class="button button-primary">' . esc_html__( 'Aplica a les seleccionades', 'padelcamps' ) . '</button></p></form></details>';
@@ -725,11 +794,34 @@ final class TournamentsPage {
 			$this->redirect( $back + array( 'msg' => 'err_dates' ) );
 		}
 
+		// Season: only when the form had the selector (it is hidden while no season exists).
+		// An unknown season id is treated as "no season".
+		$season_changed = false;
+		if ( isset( $_POST['season_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in guard().
+			$season_id                  = absint( self::post_str( 'season_id' ) );
+			$season_id                  = $season_id && $this->seasons->find( $season_id ) ? $season_id : 0;
+			$data['season_id']          = $season_id ?: null;
+			$data['counts_for_ranking'] = $season_id && '1' === self::post_str( 'counts_for_ranking' );
+		}
+
 		if ( $id ) {
-			if ( ! $this->repo->find( $id ) ) {
+			$existing = $this->repo->find( $id );
+			if ( ! $existing ) {
 				$this->redirect( array( 'msg' => 'not_found' ) );
 			}
+			if ( array_key_exists( 'season_id', $data ) ) {
+				$season_changed = (int) ( $existing['season_id'] ?? 0 ) !== (int) $data['season_id'];
+				$stops_counting = ! empty( $existing['counts_for_ranking'] ) && empty( $data['counts_for_ranking'] );
+				// Published points belong to the current season: they must be withdrawn first.
+				if ( ( $season_changed || $stops_counting ) && ( new RankingRepository() )->tournament_has_points( $id ) ) {
+					$this->redirect( $back + array( 'msg' => 'points_published' ) );
+				}
+			}
 			$this->repo->update( $id, $data );
+			if ( $season_changed ) {
+				// Ranking categories belong to a season: the old links no longer make sense.
+				$this->seasons->clear_category_links( $id );
+			}
 			$this->repo->save_setting( $id, 'public_names', 'initials' === self::post_str( 'public_names' ) ? 'initials' : 'full' );
 			$this->redirect( array( 'action' => 'edit', 'id' => $id, 'tab' => 'config', 'msg' => 'saved' ) );
 		}
@@ -812,15 +904,34 @@ final class TournamentsPage {
 		$price = round( (float) str_replace( ',', '.', self::post_str( 'cat_price' ) ), 2 );
 		$price = max( 0.0, min( 99999.0, $price ) );
 
+		// Ranking category: must belong to the tournament's season, otherwise it is ignored.
+		// Without the selector in the form (no points for this tournament) the link is kept.
+		$ranking_category_id = (int) ( $existing['ranking_category_id'] ?? 0 );
+		if ( isset( $_POST['cat_ranking_category'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in guard().
+			$ranking_category_id = 0;
+		}
+		if ( isset( $_POST['cat_ranking_category'] ) && ! empty( $tournament['season_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified in guard().
+			$posted = absint( self::post_str( 'cat_ranking_category' ) );
+			$rc     = $posted ? $this->seasons->ranking_category( $posted ) : null;
+			if ( $rc && (int) $rc['season_id'] === (int) $tournament['season_id'] ) {
+				$ranking_category_id = $posted;
+			}
+		}
+
+		if ( $existing && ! empty( $existing['points_published_at'] ) && (int) ( $existing['ranking_category_id'] ?? 0 ) !== $ranking_category_id ) {
+			$this->redirect( $back + array( 'msg' => 'points_published' ) );
+		}
+
 		$saved_id = $this->repo->save_category(
 			array(
-				'id'                => $cid,
-				'tournament_id'     => $tid,
-				'name'              => $name,
-				'format'            => $template,
-				'registration_mode' => FormatTemplates::all()[ $template ]['registration_mode'],
-				'max_teams'         => $max > 0 ? $max : null,
-				'price'             => $price,
+				'id'                  => $cid,
+				'tournament_id'       => $tid,
+				'name'                => $name,
+				'format'              => $template,
+				'registration_mode'   => FormatTemplates::all()[ $template ]['registration_mode'],
+				'ranking_category_id' => $ranking_category_id ?: null,
+				'max_teams'           => $max > 0 ? $max : null,
+				'price'               => $price,
 			)
 		);
 

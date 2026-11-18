@@ -57,8 +57,20 @@ final class RegistrationsView {
 			'paid'     => __( 'Pagat', 'padelcamps' ),
 			'refunded' => __( 'Reemborsat', 'padelcamps' ),
 			'free'     => __( 'Gratuït', 'padelcamps' ),
+			'partial'  => __( 'Pagat en part', 'padelcamps' ),
 		);
 		return $labels[ $payment ] ?? $payment;
+	}
+
+	/** "1 de 2 pagats" for a pair where only some players have paid ('' otherwise). */
+	private static function paid_count( array $players ): string {
+		$due  = array_filter( $players, static fn( $p ) => in_array( $p['pay_status'] ?? '', array( 'pending', 'paid' ), true ) );
+		$paid = array_filter( $due, static fn( $p ) => 'paid' === $p['pay_status'] );
+		if ( ! $paid || count( $paid ) === count( $due ) ) {
+			return '';
+		}
+		/* translators: 1: players who paid, 2: players who have to pay */
+		return sprintf( __( '%1$d de %2$d han pagat', 'padelcamps' ), count( $paid ), count( $due ) );
 	}
 
 	private static function bulk_actions(): array {
@@ -94,6 +106,7 @@ final class RegistrationsView {
 			'paid'     => 'ok',
 			'refunded' => 'bad',
 			'free'     => 'muted',
+			'partial'  => 'info',
 		);
 		return self::badge( self::payment_label( $payment ), $colors[ $payment ] ?? 'muted' );
 	}
@@ -313,7 +326,9 @@ final class RegistrationsView {
 			}
 			echo '<td>' . esc_html( $row['category_name'] ) . '</td>';
 			echo '<td>' . self::status_badge( $row['status'] ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in badge().
-			echo '<td>' . self::payment_badge( $row['payment_status'] ) . ( (float) $row['amount'] > 0 ? ' ' . esc_html( self::money( $row['amount'] ) ) : '' ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			$partly = self::paid_count( $plrs[ (int) $row['id'] ] ?? array() );
+			echo '<td>' . self::payment_badge( $row['payment_status'] ) . ( (float) $row['amount'] > 0 ? ' ' . esc_html( self::money( $row['amount'] ) ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( '' !== $partly ? '<br><span class="pc-muted">' . esc_html( $partly ) . '</span>' : '' ) . '</td>';
 			echo '<td>' . esc_html( self::when( $row['created_at'] ) ) . '</td>';
 			echo '</tr>';
 		}
@@ -411,6 +426,7 @@ final class RegistrationsView {
 		foreach ( RegistrationStatus::payments() as $pay ) {
 			printf( '<option value="%s"%s>%s</option>', esc_attr( $pay ), selected( $f['payment_status'], $pay, false ), esc_html( self::payment_label( $pay ) ) );
 		}
+		printf( '<option value="unpaid"%s>%s</option>', selected( $f['payment_status'], 'unpaid', false ), esc_html__( 'Sense pagar del tot', 'padelcamps' ) );
 		echo '</select> ';
 
 		printf( '<input type="search" name="s" value="%s" placeholder="%s" aria-label="%s"> ', esc_attr( $f['s'] ), esc_attr__( 'Cerca per nom o correu', 'padelcamps' ), esc_attr__( 'Cerca', 'padelcamps' ) );
@@ -448,7 +464,14 @@ final class RegistrationsView {
 		$this->kv( __( 'Torneig', 'padelcamps' ), $r['tournament_name'] );
 		$this->kv( __( 'Categoria', 'padelcamps' ), $r['category_name'] );
 		$this->kv( __( 'Data d’inscripció', 'padelcamps' ), self::when( $r['created_at'] ) );
-		$this->kv( __( 'Import', 'padelcamps' ), self::money( $r['amount'] ) );
+		$per = array_unique( array_map( static fn( $p ) => (float) ( $p['pay_amount'] ?? 0 ), $r['players'] ) );
+		$this->kv(
+			__( 'Import', 'padelcamps' ),
+			1 === count( $per ) && count( $r['players'] ) > 1 && (float) $r['amount'] > 0
+				/* translators: 1: pair total, 2: amount per player */
+				? sprintf( __( '%1$s (%2$s per jugador)', 'padelcamps' ), self::money( $r['amount'] ), self::money( (float) reset( $per ) ) )
+				: self::money( $r['amount'] )
+		);
 		if ( ! empty( $r['paid_at'] ) ) {
 			$this->kv( __( 'Data de pagament', 'padelcamps' ), self::when( $r['paid_at'] ) );
 		}
@@ -481,7 +504,7 @@ final class RegistrationsView {
 		$answers_players = is_array( $a['players'] ?? null ) ? $a['players'] : array();
 		echo '<tr><th scope="row">' . esc_html__( 'DNI o NIE', 'padelcamps' ) . '</th>';
 		foreach ( $r['players'] as $i => $p ) {
-			echo '<td>' . esc_html( ( $answers_players[ $i ]['dni'] ?? '' ) ?: '—' ) . '</td>';
+			echo '<td>' . esc_html( ( $p['dni'] ?? '' ) ?: ( $answers_players[ $i ]['dni'] ?? '' ) ?: '—' ) . '</td>';
 		}
 		echo '</tr>';
 		echo '<tr><th scope="row">' . esc_html__( 'Welcome pack', 'padelcamps' ) . '</th>';
@@ -552,13 +575,26 @@ final class RegistrationsView {
 		}
 		echo '</select></td></tr>';
 
-		echo '<tr><th scope="row"><label for="pc-r-pay">' . esc_html__( 'Pagament', 'padelcamps' ) . '</label></th><td>';
+		// Each player pays their own fee: one payment state per player.
+		echo '<tr><th scope="row">' . esc_html__( 'Pagament', 'padelcamps' ) . '</th><td>';
 		if ( (float) $r['amount'] > 0 ) {
-			echo '<select id="pc-r-pay" name="payment">';
-			foreach ( array( 'pending', 'paid', 'refunded' ) as $p ) {
-				printf( '<option value="%s"%s>%s</option>', esc_attr( $p ), selected( $r['payment_status'], $p, false ), esc_html( self::payment_label( $p ) ) );
+			foreach ( $r['players'] as $p ) {
+				$pos = (int) $p['position'];
+				echo '<p class="pc-pay-row"><label for="pc-r-pay-' . $pos . '">' . esc_html( $p['name'] ) . ' · ' . esc_html( self::money( (float) $p['pay_amount'] ) ) . '</label> ';
+				if ( 'free' === $p['pay_status'] || (float) $p['pay_amount'] <= 0 ) {
+					echo esc_html( self::payment_label( 'free' ) ) . '</p>';
+					continue;
+				}
+				echo '<select id="pc-r-pay-' . $pos . '" name="payment[' . $pos . ']">';
+				foreach ( array( 'pending', 'paid', 'refunded' ) as $s ) {
+					printf( '<option value="%s"%s>%s</option>', esc_attr( $s ), selected( $p['pay_status'], $s, false ), esc_html( self::payment_label( $s ) ) );
+				}
+				echo '</select>';
+				if ( 'paid' === $p['pay_status'] && ! empty( $p['pay_paid_at'] ) ) {
+					echo ' <span class="pc-muted">' . esc_html( self::when( (string) $p['pay_paid_at'] ) ) . '</span>';
+				}
+				echo '</p>';
 			}
-			echo '</select>';
 		} else {
 			echo esc_html( self::payment_label( 'free' ) );
 		}
@@ -708,11 +744,17 @@ final class RegistrationsView {
 		if ( RegistrationStatus::is_valid( $status ) ) {
 			$this->regs->set_status( $ids, $status );
 		}
-		$payment = sanitize_key( self::post_str( 'payment' ) );
-		if ( in_array( $payment, array( 'pending', 'paid', 'refunded' ), true ) ) {
-			$this->regs->set_payment( $ids, $payment );
+		// One payment per player: payment[position] = pending | paid | refunded.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput -- verified in guard(); keys cast to int, values whitelisted.
+		$payments = isset( $_POST['payment'] ) && is_array( $_POST['payment'] ) ? wp_unslash( $_POST['payment'] ) : array();
+		$paid_now = false;
+		foreach ( $payments as $pos => $pay ) {
+			$pay = sanitize_key( (string) $pay );
+			if ( in_array( $pay, array( 'pending', 'paid', 'refunded' ), true ) && $this->regs->set_player_payment( $id, absint( $pos ), $pay ) && 'paid' === $pay ) {
+				$paid_now = true;
+			}
 		}
-		$mails = $this->notify( $before, RegistrationStatus::is_valid( $status ) ? $status : '', 'paid' === $payment );
+		$mails = $this->notify( $before, RegistrationStatus::is_valid( $status ) ? $status : '', $paid_now );
 
 		$rating_raw = trim( str_replace( ',', '.', self::post_str( 'rating' ) ) );
 		$rating     = '' !== $rating_raw && is_numeric( $rating_raw ) ? max( 0.0, min( 99.99, round( (float) $rating_raw, 2 ) ) ) : null;
@@ -793,7 +835,7 @@ final class RegistrationsView {
 			__( 'Data d’inscripció', 'padelcamps' ),
 		);
 		foreach ( array( 1, 2 ) as $n ) {
-			foreach ( array( __( 'Nom i cognoms', 'padelcamps' ), __( 'Correu electrònic', 'padelcamps' ), __( 'Telèfon', 'padelcamps' ), __( 'Club', 'padelcamps' ), __( 'DNI o NIE', 'padelcamps' ) ) as $col ) {
+			foreach ( array( __( 'Nom i cognoms', 'padelcamps' ), __( 'Correu electrònic', 'padelcamps' ), __( 'Telèfon', 'padelcamps' ), __( 'Club', 'padelcamps' ), __( 'DNI o NIE', 'padelcamps' ), __( 'Pagament', 'padelcamps' ), __( 'Import (€)', 'padelcamps' ), __( 'Data de pagament', 'padelcamps' ) ) as $col ) {
 				$header[] = $player_n( $n ) . ' – ' . $col;
 			}
 		}
@@ -844,7 +886,11 @@ final class RegistrationsView {
 				$line[] = $p['email'] ?? '';
 				$line[] = $p['phone'] ?? '';
 				$line[] = $p['club'] ?? '';
-				$line[] = $ap[ $i ]['dni'] ?? '';
+				$line[] = ( $p['dni'] ?? '' ) ?: ( $ap[ $i ]['dni'] ?? '' );
+				// Each player pays their own fee.
+				$line[] = isset( $p['pay_status'] ) ? self::payment_label( (string) $p['pay_status'] ) : '';
+				$line[] = isset( $p['pay_amount'] ) ? number_format( (float) $p['pay_amount'], 2, '.', '' ) : '';
+				$line[] = (string) ( $p['pay_paid_at'] ?? '' );
 			}
 			foreach ( $pack_labels as $label ) {
 				foreach ( array( 0, 1 ) as $i ) {

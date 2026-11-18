@@ -57,6 +57,8 @@ final class RegistrationShortcode {
 			'invalid_dni'    => __( 'Introdueix un DNI o NIE vàlid.', 'padelcamps' ),
 			'invalid_choice' => __( 'Tria una de les opcions.', 'padelcamps' ),
 			'same_email'     => __( 'Cada jugador ha de tenir un correu diferent.', 'padelcamps' ),
+			'same_dni'       => __( 'Cada jugador ha de tenir un DNI o NIE diferent.', 'padelcamps' ),
+			'dni_taken'      => __( 'Aquest DNI o NIE ja pertany a un altre jugador.', 'padelcamps' ),
 		);
 		return $messages[ $code ] ?? $messages['invalid'];
 	}
@@ -217,8 +219,10 @@ final class RegistrationShortcode {
 		// Nobody on the waiting list should pay before getting a place.
 		if ( (float) $ok['amount'] > 0 && 'waitlist' !== $ok['status'] ) {
 			$h .= '<h3>' . esc_html__( 'Pagament', 'padelcamps' ) . '</h3>';
-			/* translators: %s: amount with currency */
-			$h .= '<p>' . esc_html( sprintf( __( 'Import de la inscripció: %s', 'padelcamps' ), number_format_i18n( (float) $ok['amount'], 2 ) . ' €' ) ) . '</p>';
+			// Each player pays their own fee.
+			$per = (float) ( $ok['price'] ?? 0 ) > 0 ? (float) $ok['price'] : (float) $ok['amount'];
+			/* translators: 1: amount per player, 2: amount for the pair */
+			$h .= '<p>' . esc_html( sprintf( __( 'Import: %1$s per jugador (%2$s la parella).', 'padelcamps' ), number_format_i18n( $per, 2 ) . ' €', number_format_i18n( (float) $ok['amount'], 2 ) . ' €' ) ) . '</p>';
 			if ( '' !== $config['payment_instructions'] ) {
 				$h .= wpautop( esc_html( $config['payment_instructions'] ) );
 			}
@@ -301,7 +305,8 @@ final class RegistrationShortcode {
 		foreach ( $categories as $cat ) {
 			$text = $cat['name'];
 			if ( (float) $cat['price'] > 0 ) {
-				$text .= ' — ' . number_format_i18n( (float) $cat['price'], 2 ) . ' €';
+				/* translators: %s: price per player */
+				$text .= ' — ' . sprintf( __( '%s per jugador', 'padelcamps' ), number_format_i18n( (float) $cat['price'], 2 ) . ' €' );
 			}
 			$full = 'waitlist' === RegistrationForm::initial_status( null === $cat['max_teams'] ? null : (int) $cat['max_teams'], $counts[ (int) $cat['id'] ] ?? 0 );
 			if ( $full ) {
@@ -524,7 +529,7 @@ final class RegistrationShortcode {
 		$clean = $result['clean'];
 
 		foreach ( $clean['players'] as $player ) {
-			if ( $this->registrations->has_active_registration( $clean['category_id'], $player['email'] ) ) {
+			if ( $this->registrations->has_active_registration( $clean['category_id'], $player['dni'], $player['email'] ) ) {
 				$fail( array( 'duplicate' ) );
 			}
 		}
@@ -562,6 +567,7 @@ final class RegistrationShortcode {
 				'status'        => $created['status'],
 				'category'      => $category['name'],
 				'amount'        => $created['amount'],
+				'price'         => $created['price'],
 				'email'         => $clean['players'][0]['email'],
 				'mailed'        => $mailed,
 			),

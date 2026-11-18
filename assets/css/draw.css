@@ -316,9 +316,13 @@
 	white-space: nowrap;
 	font-weight: 600;
 }
-.pc-draw-cats a.is-today {
+.pc-draw-cats a.is-today,
+.pc-draw-cats a.is-active {
 	border-color: var(--pc-accent);
 	font-weight: 600;
+}
+.pc-ranking .pc-standings td:first-child {
+	width: 3rem;
 }
 @media (max-width: 520px) {
 	.pc-sched-item {

@@ -829,3 +829,108 @@
 		font-size: 32px;
 	}
 }
+
+/* ---------- Sub-pages inside a tab (category links, results sections) ------- */
+
+/* A boxed group of button-like links: reads as navigation, not as content. */
+.padelcamps-admin .pc-subnav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	width: fit-content;
+	max-width: 100%;
+	box-sizing: border-box;
+	margin: 36px 0 26px;
+	padding: 4px;
+	border: 1px solid var(--pc-border);
+	border-radius: var(--pc-radius);
+	background: var(--pc-surface-alt);
+}
+
+.padelcamps-admin .pc-subnav__item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 32px;
+	padding: 0 14px;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	color: var(--pc-muted);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.2;
+	text-decoration: none;
+	transition: background-color .15s ease, color .15s ease;
+}
+
+.padelcamps-admin .pc-subnav__item:hover {
+	background: #e9ebef;
+	color: var(--pc-text);
+}
+
+.padelcamps-admin .pc-subnav__item:focus {
+	box-shadow: 0 0 0 2px var(--pc-accent);
+	outline: 2px solid transparent;
+}
+
+.padelcamps-admin .pc-subnav__item.is-current,
+.padelcamps-admin .pc-subnav__item.is-current:hover {
+	border-color: var(--pc-border);
+	background: var(--pc-surface);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+	color: var(--pc-accent);
+	font-weight: 600;
+}
+
+.padelcamps-admin .pc-count {
+	display: inline-block;
+	min-width: 18px;
+	padding: 0 6px;
+	border-radius: 4px;
+	background: #fef3c7;
+	color: #78350f;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 18px;
+	text-align: center;
+}
+
+@media (max-width: 782px) {
+	.padelcamps-admin .pc-subnav {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+	}
+
+	.padelcamps-admin .pc-subnav__item {
+		white-space: nowrap;
+	}
+}
+
+/* Panes of a sub-paged form: the heading of the visible pane starts flush. */
+.padelcamps-admin .pc-pane[hidden] {
+	display: none;
+}
+
+.padelcamps-admin .pc-pane > h3:first-child {
+	margin-top: 0;
+}
+
+/* Fixed (non-configurable) form fields: read-only list with a lock. */
+.padelcamps-admin .pc-panel h4 {
+	margin: 1.6em 0 .6em;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.padelcamps-admin .pc-fixed-fields {
+	margin-bottom: 8px;
+}
+
+.padelcamps-admin .pc-fixed-fields .dashicons {
+	width: 14px;
+	height: 14px;
+	margin-right: 2px;
+	font-size: 14px;
+	line-height: 14px;
+	vertical-align: -2px;
+}

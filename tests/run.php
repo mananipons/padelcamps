@@ -200,7 +200,7 @@ $cfg = RF::normalize( array(
 ) );
 $good = array(
 	'category_id' => '7',
-	'p1_name' => '  Anna   Puig ', 'p1_email' => 'ANNA@Example.com', 'p1_phone' => '+34 600 111 222', 'p1_pack_0' => 'M', 'p1_pack_1' => '  Cacauets <i>molt</i> ',
+	'p1_name' => '  Anna   Puig ', 'p1_dni' => '00000001r', 'p1_email' => 'ANNA@Example.com', 'p1_phone' => '+34 600 111 222', 'p1_pack_0' => 'M', 'p1_pack_1' => '  Cacauets <i>molt</i> ',
 	'p2_name' => 'Pere Soler', 'p2_email' => 'pere@example.com', 'p2_pack_0' => 'L', 'p2_dni' => '12345678z',
 	'notes' => '<b>Prefereixo</b> matins',
 	'av' => array( 'yes', 'from:19:00' ),
@@ -224,7 +224,7 @@ check( 'validate: invalid email/phone', ( $e['p1_email'] ?? '' ) === 'invalid_em
 check( 'validate: required partner email', ( $e['p2_email'] ?? '' ) === 'required' );
 check( 'validate: pack choice not in list / required missing', ( $e['p1_pack_0'] ?? '' ) === 'invalid_choice' && ( $e['p2_pack_0'] ?? '' ) === 'required' );
 check( 'validate: optional pack text needs nothing', ! isset( $e['p1_pack_1'] ) && ! isset( $e['p2_pack_1'] ) );
-$nopack = RF::validate( RF::normalize( array( 'welcome_pack' => array( 'enabled' => false, 'items' => array( array( 'label' => 'X', 'type' => 'text', 'required' => true ) ) ) ) ), array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+$nopack = RF::validate( RF::normalize( array( 'welcome_pack' => array( 'enabled' => false, 'items' => array( array( 'label' => 'X', 'type' => 'text', 'required' => true ) ) ) ) ), array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p1_dni' => '12345678Z', 'p2_dni' => '00000001R', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
 check( 'validate: disabled pack asks nothing', $nopack['errors'] === array() && $nopack['clean']['players'][0]['pack'] === array() );
 check( 'validate: availability invalid/missing', ( $e['av_0'] ?? '' ) === 'invalid' || ( $e['av_0'] ?? '' ) === 'required' );
 check( 'validate: availability missing slot', ( $e['av_1'] ?? '' ) === 'required' );
@@ -233,7 +233,7 @@ check( 'validate: required consent missing', ( $e['consent_health'] ?? '' ) === 
 $same = RF::validate( RF::defaults(), array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p2_name' => 'Pere', 'p2_email' => 'A@b.cat', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
 check( 'validate: same email for both players', ( $same['errors']['p2_email'] ?? '' ) === 'same_email' );
 $opt = RF::normalize( array( 'fields' => array( 'email2' => 'off', 'phone1' => 'off', 'notes' => 'off' ) ) );
-$ok = RF::validate( $opt, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p2_name' => 'Pere', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+$ok = RF::validate( $opt, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p2_name' => 'Pere', 'p1_dni' => '12345678Z', 'p2_dni' => '00000001R', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
 check( 'validate: off fields are not required', $ok['errors'] === array() );
 check( 'validate: availability disabled => not required', ! isset( $ok['errors']['av_0'] ) && $ok['clean']['availability'] === array() );
 
@@ -273,6 +273,32 @@ check( 'RS summary: collected money', abs( $sum['paid_total'] - 50.0 ) < 0.001 )
 check( 'RS summary: due money ignores waitlist/cancelled', abs( $sum['due_total'] - 75.0 ) < 0.001 );
 $empty = RS::summarize( array() );
 check( 'RS summary: empty', $empty['count'] === 0 && $empty['paid_total'] === 0.0 && $empty['status']['pending'] === 0 );
+
+// Per-player payment (each player pays their own fee).
+check( 'RS: partial is a registration state, not a player one', RS::is_valid_payment( 'partial' ) && ! RS::is_valid_player_payment( 'partial' ) && RS::is_valid_player_payment( 'paid' ) );
+check( 'RS aggregate: both paid', 'paid' === RS::aggregate( array( 'paid', 'paid' ) ) );
+check( 'RS aggregate: one paid', 'partial' === RS::aggregate( array( 'paid', 'pending' ) ) && 'partial' === RS::aggregate( array( 'pending', 'paid' ) ) );
+check( 'RS aggregate: none paid', 'pending' === RS::aggregate( array( 'pending', 'pending' ) ) );
+check( 'RS aggregate: free', 'free' === RS::aggregate( array( 'free', 'free' ) ) && 'free' === RS::aggregate( array() ) );
+check( 'RS aggregate: refunded', 'refunded' === RS::aggregate( array( 'refunded', 'refunded' ) ) );
+check( 'RS aggregate: one refunded, other paid', 'paid' === RS::aggregate( array( 'refunded', 'paid' ) ) );
+check( 'RS aggregate: one refunded, other pending', 'pending' === RS::aggregate( array( 'refunded', 'pending' ) ) );
+check( 'RS aggregate: single player', 'paid' === RS::aggregate( array( 'paid' ) ) );
+check( 'RS split: even', array( 20.0, 20.0 ) === RS::split( 40.0, 2 ) );
+check( 'RS split: odd cents add up', array( 20.01, 20.0 ) === RS::split( 40.01, 2 ) && abs( array_sum( RS::split( 40.01, 2 ) ) - 40.01 ) < 0.0001 );
+check( 'RS split: thirds', array( 3.34, 3.33, 3.33 ) === RS::split( 10.0, 3 ) );
+check( 'RS split: none', array() === RS::split( 40.0, 0 ) && array( 0.0, 0.0 ) === RS::split( 0.0, 2 ) );
+$pp = RS::summarize(
+	array(
+		array( 'status' => 'confirmed', 'payment_status' => 'partial', 'n' => '1', 'total' => '40.00' ),
+		array( 'status' => 'confirmed', 'payment_status' => 'paid', 'n' => '1', 'total' => '40.00' ),
+	),
+	array(
+		array( 'status' => 'confirmed', 'payment_status' => 'paid', 'total' => '60.00' ),
+		array( 'status' => 'confirmed', 'payment_status' => 'pending', 'total' => '20.00' ),
+	)
+);
+check( 'RS summary per player: counts by pair, money by player', 2 === $pp['count'] && 1 === $pp['payment']['partial'] && abs( $pp['paid_total'] - 60.0 ) < 0.001 && abs( $pp['due_total'] - 20.0 ) < 0.001 );
 
 // --- Csv ---
 check( 'csv: plain', Csv::cell( 'Anna Puig' ) === 'Anna Puig' );
@@ -790,7 +816,7 @@ check( 'needs sending', SD::needs_sending( SD::NEW ) && SD::needs_sending( SD::C
 
 // --- ManualRegistration ---
 use PadelCamps\Engine\ManualRegistration as MR;
-$ok = MR::validate( array( 'category_id' => '7', 'p1_name' => ' Anna  Puig ', 'p2_name' => 'Pau Roca', 'p1_email' => 'ANNA@x.cat ', 'p2_phone' => '600 11 22 33', 'p1_club' => '<b>CT</b> Vic', 'status' => 'pending', 'payment' => 'paid', 'lang' => 'es', 'rating' => '7,5', 'notes' => "Per telèfon\n<script>x</script>" ), array( 7, 8 ), array( 'ca', 'es', 'en' ) );
+$ok = MR::validate( array( 'category_id' => '7', 'p1_name' => ' Anna  Puig ', 'p2_name' => 'Pau Roca', 'p1_dni' => ' 12.345.678-z ', 'p2_dni' => 'x1234567l', 'p1_email' => 'ANNA@x.cat ', 'p2_phone' => '600 11 22 33', 'p1_club' => '<b>CT</b> Vic', 'status' => 'pending', 'payment' => 'paid', 'lang' => 'es', 'rating' => '7,5', 'notes' => "Per telèfon\n<script>x</script>" ), array( 7, 8 ), array( 'ca', 'es', 'en' ) );
 check( 'manual ok', array() === $ok['errors'] );
 check( 'manual clean names', 'Anna Puig' === $ok['clean']['players'][0]['name'] && 'Pau Roca' === $ok['clean']['players'][1]['name'] );
 check( 'manual email lowercased', 'anna@x.cat' === $ok['clean']['players'][0]['email'] && '' === $ok['clean']['players'][1]['email'] );
@@ -809,7 +835,7 @@ check( 'manual bad rating', 'invalid' === ( $bad['errors']['rating'] ?? '' ) );
 check( 'manual defaults', 'confirmed' === $bad['clean']['status'] && 'pending' === $bad['clean']['payment'] && 'ca' === $bad['clean']['lang'] );
 $same = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_email' => 'a@b.cat', 'p2_email' => 'A@B.cat' ) );
 check( 'manual same email twice', 'same_email' === ( $same['errors']['p2_email'] ?? '' ) );
-check( 'manual no email ok', array() === MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B' ) )['errors'] );
+check( 'manual no email ok', array() === MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_dni' => '12345678Z', 'p2_dni' => '00000001R' ) )['errors'] );
 
 // --- CategoryBulk ---
 use PadelCamps\Engine\CategoryBulk as CB;
@@ -895,6 +921,328 @@ check( 'placeholders missing', ! Catalog::placeholders_match( 'Hi %s', 'Hola' ) 
 check( 'placeholders extra', ! Catalog::placeholders_match( 'Hi', 'Hola %s' ) );
 check( 'placeholders type differs', ! Catalog::placeholders_match( '%d', '%s' ) );
 check( 'escaped percent ignored', Catalog::placeholders_match( '100%% %s', '100%% %s' ) );
+
+// --- PointsScheme ---
+$ps_def = \PadelCamps\Engine\PointsScheme::defaults();
+check( 'points: defaults cover every key', array_keys( $ps_def ) === \PadelCamps\Engine\PointsScheme::keys() );
+check( 'points: defaults descending', \PadelCamps\Engine\PointsScheme::is_descending( $ps_def ) );
+check( 'points: normalize empty = defaults', \PadelCamps\Engine\PointsScheme::normalize( null ) === $ps_def && \PadelCamps\Engine\PointsScheme::normalize( 'x' ) === $ps_def );
+$ps_n = \PadelCamps\Engine\PointsScheme::normalize( array( 'champion' => '150', 'runner_up' => 80, 'semifinal' => 'abc', 'bogus' => 5, 'quarterfinal' => '-3', 'round_of_16' => 1.5, 'participation' => '' ) );
+check( 'points: normalize accepts numeric strings and ints', 150 === $ps_n['champion'] && 80 === $ps_n['runner_up'] );
+check( 'points: normalize falls back on invalid values', $ps_n['semifinal'] === $ps_def['semifinal'] && $ps_n['quarterfinal'] === $ps_def['quarterfinal'] && $ps_n['round_of_16'] === $ps_def['round_of_16'] && $ps_n['participation'] === $ps_def['participation'] );
+check( 'points: normalize drops unknown keys', ! isset( $ps_n['bogus'] ) && count( $ps_n ) === 6 );
+check( 'points: normalize clamps to max', \PadelCamps\Engine\PointsScheme::normalize( array( 'champion' => 999999999 ) )['champion'] === \PadelCamps\Engine\PointsScheme::MAX_POINTS );
+check( 'points: zero is valid', 0 === \PadelCamps\Engine\PointsScheme::normalize( array( 'participation' => '0' ) )['participation'] );
+check( 'points: not descending detected', ! \PadelCamps\Engine\PointsScheme::is_descending( array_merge( $ps_def, array( 'runner_up' => 120 ) ) ) );
+check( 'points: equal values are descending', \PadelCamps\Engine\PointsScheme::is_descending( array_fill_keys( \PadelCamps\Engine\PointsScheme::keys(), 10 ) ) );
+check( 'points: points_for', 70 === \PadelCamps\Engine\PointsScheme::points_for( $ps_def, 'runner_up' ) && 0 === \PadelCamps\Engine\PointsScheme::points_for( $ps_def, 'nope' ) );
+
+// --- RoundReached ---
+use PadelCamps\Engine\PointsScheme;
+use PadelCamps\Engine\RoundReached;
+
+/**
+ * Plays a whole knockout bracket built by DrawPlan: the entrant with the lower seed
+ * index wins every match. Returns matches in RoundReached format; $stop_after_round
+ * leaves later rounds unplayed (winner null).
+ */
+function rr_play_knockout( array $ids, ?int $stop_after_round = null ): array {
+	$rows = DrawPlan::knockout( $ids );
+	$idx  = array();
+	foreach ( $rows as $i => $m ) {
+		$idx[ $m['round'] . ':' . $m['position'] ] = $i;
+	}
+	$seed_of = array_flip( $ids );
+	$rounds  = max( array_column( $rows, 'round' ) );
+	for ( $r = 1; $r <= $rounds; $r++ ) {
+		foreach ( $rows as $i => $m ) {
+			if ( $m['round'] !== $r ) {
+				continue;
+			}
+			if ( null !== $stop_after_round && $r > $stop_after_round ) {
+				continue;
+			}
+			$a = $rows[ $i ]['a'];
+			$b = $rows[ $i ]['b'];
+			if ( null === $rows[ $i ]['winner'] ) {
+				if ( null === $a || null === $b ) {
+					continue;
+				}
+				$rows[ $i ]['winner'] = $seed_of[ $a ] < $seed_of[ $b ] ? $a : $b;
+			}
+			if ( null !== $m['next_round'] && null !== $rows[ $i ]['winner'] ) {
+				$rows[ $idx[ $m['next_round'] . ':' . $m['next_pos'] ] ][ 'a' === $m['next_slot'] ? 'a' : 'b' ] = $rows[ $i ]['winner'];
+			}
+		}
+	}
+	return array_map(
+		static fn( $m ) => array(
+			'phase'  => 'knockout',
+			'round'  => $m['round'],
+			'a'      => $m['a'],
+			'b'      => $m['b'],
+			'winner' => $m['winner'],
+		),
+		$rows
+	);
+}
+function rr_count( array $results, string $key ): int {
+	return count( array_filter( $results, static fn( $k ) => $k === $key ) );
+}
+
+foreach ( array( 2, 3, 4, 5, 8, 9, 16, 17, 32 ) as $n ) {
+	$ids = range( 101, 100 + $n );
+	$res = RoundReached::compute( 'knockout', $ids, rr_play_knockout( $ids ) );
+	$r   = $res['results'];
+	check( "rr knockout $n: complete", $res['complete'] );
+	check( "rr knockout $n: everyone has a result", count( $r ) === $n );
+	check( "rr knockout $n: 1 champion (the best seed)", 1 === rr_count( $r, 'champion' ) && 'champion' === $r[101] );
+	check( "rr knockout $n: 1 runner-up", 1 === rr_count( $r, 'runner_up' ) );
+	// Byes: only real matches have a loser. Losers k rounds before the final = min(2^k, n - 2^k).
+	$losers = static fn( int $k ): int => min( 2 ** $k, max( 0, $n - 2 ** $k ) );
+	check( "rr knockout $n: semifinalists", rr_count( $r, 'semifinal' ) === $losers( 1 ) );
+	check( "rr knockout $n: quarterfinalists", rr_count( $r, 'quarterfinal' ) === $losers( 2 ) );
+	check( "rr knockout $n: round of 16", rr_count( $r, 'round_of_16' ) === $losers( 3 ) );
+	check( "rr knockout $n: the rest is participation", rr_count( $r, 'participation' ) === $n - 2 - $losers( 1 ) - $losers( 2 ) - $losers( 3 ) );
+}
+// 5 entrants: seed 1 had a bye but still reaches the semifinal at worst; the round-1 loser is a quarterfinalist-level exit.
+$ids5 = range( 1, 5 );
+$r5   = RoundReached::compute( 'knockout', $ids5, rr_play_knockout( $ids5 ) )['results'];
+check( 'rr 5 entrants: only one pair played round 1 -> its loser is quarterfinal', 1 === rr_count( $r5, 'quarterfinal' ) && 5 === array_search( 'quarterfinal', $r5, true ) );
+
+// Unfinished: final not played -> not complete, no results.
+$ids8 = range( 1, 8 );
+$part = RoundReached::compute( 'knockout', $ids8, rr_play_knockout( $ids8, 2 ) );
+check( 'rr unfinished final => not complete', ! $part['complete'] && array() === $part['results'] );
+check( 'rr no matches => not complete', ! RoundReached::compute( 'knockout', $ids8, array() )['complete'] );
+check( 'rr unknown format => not complete', ! RoundReached::compute( 'americana', $ids8, rr_play_knockout( $ids8 ) )['complete'] );
+
+// groups_knockout: only the qualified pairs are in the bracket, the others are participation.
+$all   = range( 1, 12 );
+$qual  = array( 1, 4, 7, 10, 2, 5, 8, 11 );
+$gk    = rr_play_knockout( $qual );
+// The 4 pairs that did not qualify (3, 6, 9, 12) played their group matches.
+$gk[]  = array( 'phase' => 'groups', 'round' => 1, 'a' => 3, 'b' => 6, 'winner' => 3 );
+$gk[]  = array( 'phase' => 'groups', 'round' => 1, 'a' => 9, 'b' => 12, 'winner' => 9 );
+$gres  = RoundReached::compute( 'groups_knockout', $all, $gk );
+check( 'rr groups_knockout: complete', $gres['complete'] );
+check( 'rr groups_knockout: group-stage exits get participation', 'participation' === $gres['results'][3] && 'participation' === $gres['results'][12] && 4 === rr_count( $gres['results'], 'participation' ) );
+check( 'rr groups_knockout: bracket results as usual', 1 === rr_count( $gres['results'], 'champion' ) && 4 === rr_count( $gres['results'], 'quarterfinal' ) );
+$gk_only_groups = array( array( 'phase' => 'groups', 'round' => 1, 'a' => 1, 'b' => 2, 'winner' => 1 ) );
+check( 'rr groups_knockout: only groups played => not complete', ! RoundReached::compute( 'groups_knockout', $all, $gk_only_groups )['complete'] );
+
+// Consolation never changes the result.
+$ids4  = array( 1, 2, 3, 4 );
+$with  = rr_play_knockout( $ids4 );
+$with[] = array( 'phase' => 'consolation', 'round' => 1, 'a' => 3, 'b' => 4, 'winner' => 4 );
+$with[] = array( 'phase' => 'consolation', 'round' => 2, 'a' => 4, 'b' => 2, 'winner' => 4 );
+check( 'rr consolation ignored', RoundReached::compute( 'knockout', $ids4, $with )['results'] === RoundReached::compute( 'knockout', $ids4, rr_play_knockout( $ids4 ) )['results'] );
+
+// Inconsistent data: an entrant won a round but has no next match -> not complete.
+$bad = rr_play_knockout( $ids4 );
+$bad = array_values( array_filter( $bad, static fn( $m ) => 2 !== $m['round'] || null === $m['a'] ) );
+check( 'rr missing final => not complete', ! RoundReached::compute( 'knockout', $ids4, $bad )['complete'] );
+
+// Round robin: standings decide, everything must be played.
+$rrm = array(
+	array( 'phase' => 'round_robin', 'round' => 1, 'a' => 1, 'b' => 2, 'winner' => 1 ),
+	array( 'phase' => 'round_robin', 'round' => 1, 'a' => 3, 'b' => 4, 'winner' => 3 ),
+);
+$rrr = RoundReached::compute( 'round_robin', array( 1, 2, 3, 4 ), $rrm, array( 3, 1, 4, 2 ) );
+check( 'rr round robin: complete', $rrr['complete'] );
+check( 'rr round robin: 1st/2nd/3rd-4th', $rrr['results'] == array( 3 => 'champion', 1 => 'runner_up', 4 => 'semifinal', 2 => 'semifinal' ) );
+$rr20 = array();
+for ( $i = 1; $i <= 20; $i += 2 ) {
+	$rr20[] = array( 'phase' => 'round_robin', 'round' => 1, 'a' => $i, 'b' => $i + 1, 'winner' => $i );
+}
+$rr9 = RoundReached::compute( 'round_robin', range( 1, 20 ), $rr20, range( 1, 20 ) )['results'];
+check( 'rr round robin: places 5-8 quarter, 9-16 r16, 17+ participation', 'quarterfinal' === $rr9[5] && 'quarterfinal' === $rr9[8] && 'round_of_16' === $rr9[9] && 'round_of_16' === $rr9[16] && 'participation' === $rr9[17] );
+$rrm_open = array_merge( $rrm, array( array( 'phase' => 'round_robin', 'round' => 2, 'a' => 1, 'b' => 3, 'winner' => null ) ) );
+check( 'rr round robin: pending match => not complete', ! RoundReached::compute( 'round_robin', array( 1, 2, 3, 4 ), $rrm_open, array( 3, 1, 4, 2 ) )['complete'] );
+check( 'rr round robin: ranking missing an entrant => not complete', ! RoundReached::compute( 'round_robin', array( 1, 2, 3, 4 ), $rrm, array( 3, 1, 4 ) )['complete'] );
+check( 'rr round robin: no matches => not complete', ! RoundReached::compute( 'round_robin', array( 1, 2 ), array(), array( 1, 2 ) )['complete'] );
+
+// Withdrawals: a pair that never took the court gets no result (no points).
+$g8 = range( 1, 8 );
+// Knockout of 8: pair 8 (worst seed) gives a walkover in round 1 against pair 1.
+$wo = rr_play_knockout( $g8 );
+foreach ( $wo as $i => $m ) {
+	if ( 1 === $m['round'] && 1 === $m['a'] && 8 === $m['b'] ) {
+		$wo[ $i ]['walkover_loser'] = 8;
+	}
+}
+$wres = RoundReached::compute( 'knockout', $g8, $wo );
+check( 'rr withdrawal: gave the only walkover => no result, listed', $wres['complete'] && ! isset( $wres['results'][8] ) && array( 8 ) === $wres['withdrawn'] );
+check( 'rr withdrawal: the others keep their result', 'champion' === $wres['results'][1] && 7 === count( $wres['results'] ) );
+check( 'rr withdrawal: gives 0 points to nobody (absent from points)', ! isset( RoundReached::points( $wres['results'], PointsScheme::defaults() )[8] ) );
+$none = RoundReached::compute( 'knockout', $g8, rr_play_knockout( $g8 ) );
+check( 'rr no withdrawals => empty list', array() === $none['withdrawn'] );
+
+// Played once, then gave a walkover later: keeps the points.
+$late = rr_play_knockout( $g8 );
+foreach ( $late as $i => $m ) {
+	if ( 2 === $m['round'] && 4 === $m['b'] ) {
+		$late[ $i ]['walkover_loser'] = 4; // pair 4 beat pair 5 in round 1, then did not show up.
+	}
+}
+$lres = RoundReached::compute( 'knockout', $g8, $late );
+check( 'rr gave a walkover after playing => still scores', array() === $lres['withdrawn'] && isset( $lres['results'][4] ) );
+// Winner by walkover counts as having taken part.
+$wo_win = array( array( 'phase' => 'knockout', 'round' => 1, 'a' => 1, 'b' => 2, 'winner' => 1, 'walkover_loser' => 2 ) );
+$wwin   = RoundReached::compute( 'knockout', array( 1, 2 ), $wo_win );
+check( 'rr 2 pairs, one gives walkover: champion scores, the other withdrew', array( 1 => 'champion' ) === $wwin['results'] && array( 2 ) === $wwin['withdrawn'] );
+
+// Groups stage: a pair that gave every group walkover and did not qualify gets nothing.
+$gw   = $gk;
+$gw[] = array( 'phase' => 'groups', 'round' => 1, 'a' => 3, 'b' => 12, 'winner' => 12, 'walkover_loser' => 3 );
+$gw[] = array( 'phase' => 'groups', 'round' => 2, 'a' => 3, 'b' => 9, 'winner' => 9, 'walkover_loser' => 3 );
+$gw   = array_values( array_filter( $gw, static fn( $m ) => ! ( 'groups' === $m['phase'] && 3 === $m['a'] && 6 === $m['b'] ) ) ); // its only played match is replaced by walkovers.
+$gwres = RoundReached::compute( 'groups_knockout', $all, $gw );
+$gw_w = $gwres['withdrawn'];
+sort( $gw_w );
+check( 'rr groups: gave every walkover (3) or has no match (6) => withdrawn, nobody else', array( 3, 6 ) === $gw_w );
+check( 'rr groups: withdrawn pair has no result', ! isset( $gwres['results'][3] ) );
+check( 'rr not complete => no withdrawn list', array() === RoundReached::compute( 'knockout', $g8, rr_play_knockout( $g8, 1 ) )['withdrawn'] );
+
+// Round robin: a pair that gave every walkover is dropped, the ranking positions of the rest stay.
+$rrw = array(
+	array( 'phase' => 'round_robin', 'round' => 1, 'a' => 1, 'b' => 2, 'winner' => 1 ),
+	array( 'phase' => 'round_robin', 'round' => 1, 'a' => 3, 'b' => 4, 'winner' => 3, 'walkover_loser' => 4 ),
+	array( 'phase' => 'round_robin', 'round' => 2, 'a' => 1, 'b' => 4, 'winner' => 1, 'walkover_loser' => 4 ),
+);
+$rrwres = RoundReached::compute( 'round_robin', array( 1, 2, 3, 4 ), $rrw, array( 1, 3, 2, 4 ) );
+check( 'rr round robin withdrawal: dropped', array( 4 ) === $rrwres['withdrawn'] && ! isset( $rrwres['results'][4] ) );
+check( 'rr round robin withdrawal: others keep standing', 'champion' === $rrwres['results'][1] && 'runner_up' === $rrwres['results'][3] && 'semifinal' === $rrwres['results'][2] );
+
+// Points from results.
+$pts = RoundReached::points( array( 7 => 'champion', 8 => 'participation', 9 => 'nope' ), PointsScheme::defaults() );
+check( 'rr points mapping', $pts === array( 7 => 100, 8 => 10, 9 => 0 ) );
+
+// --- Dni: the identity of a player ---
+use PadelCamps\Engine\Dni;
+
+check( 'dni: valid DNI', 'dni' === Dni::kind( '12345678Z' ) && 'dni' === Dni::kind( '00000001R' ) && 'dni' === Dni::kind( '00000000T' ) );
+check( 'dni: valid NIE (X, Y, Z)', 'nie' === Dni::kind( 'X1234567L' ) && 'nie' === Dni::kind( 'Y1234567X' ) && 'nie' === Dni::kind( 'Z1234567R' ) );
+check( 'dni: wrong control letter', null === Dni::kind( '12345678A' ) && null === Dni::kind( 'X1234567A' ) && ! Dni::is_valid( '12345678Y' ) );
+check( 'dni: wrong shape', ! Dni::is_valid( '' ) && ! Dni::is_valid( '1234567Z' ) && ! Dni::is_valid( '123456789Z' ) && ! Dni::is_valid( 'W1234567L' ) && ! Dni::is_valid( 'ABCDEFGHI' ) && ! Dni::is_valid( '12345678' ) );
+check( 'dni: normalize strips spaces, dots, dashes, uppercases', '12345678Z' === Dni::normalize( ' 12.345.678-z ' ) && 'X1234567L' === Dni::normalize( 'x-1234567 l' ) );
+check( 'dni: normalize of non-strings', '' === Dni::normalize( null ) && '' === Dni::normalize( 12345678 ) && '' === Dni::normalize( array( '12345678Z' ) ) );
+check( 'dni: clean returns normalized or null', '12345678Z' === Dni::clean( '12345678-z' ) && null === Dni::clean( '12345678A' ) && null === Dni::clean( null ) );
+check( 'dni: validity needs normalized input', ! Dni::is_valid( '12345678z' ) );
+check( 'dni: RegistrationForm::clean_dni is strict now', '12345678Z' === RF::clean_dni( ' 12345678 z' ) && null === RF::clean_dni( 'AB12345' ) && null === RF::clean_dni( '12345678A' ) );
+
+// The DNI is always required on the public form and cannot be turned off.
+$dfg = RF::normalize( array( 'fields' => array( 'dni' => 'off' ) ) );
+check( 'dni: cannot be switched off', 'required' === $dfg['fields']['dni'] && ! in_array( 'dni', RF::CONFIGURABLE, true ) );
+$nodni = RF::validate( $dfg, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p2_phone' => '600111223', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+check( 'dni: missing => required for both players', ( $nodni['errors']['p1_dni'] ?? '' ) === 'required' && ( $nodni['errors']['p2_dni'] ?? '' ) === 'required' );
+$baddni = RF::validate( $dfg, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p1_dni' => '12345678A', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p2_phone' => '600111223', 'p2_dni' => 'hola', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+check( 'dni: wrong letter / garbage => invalid_dni', ( $baddni['errors']['p1_dni'] ?? '' ) === 'invalid_dni' && ( $baddni['errors']['p2_dni'] ?? '' ) === 'invalid_dni' );
+$samedni = RF::validate( $dfg, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p1_dni' => '12345678Z', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p2_phone' => '600111223', 'p2_dni' => '12345678-z', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+check( 'dni: same DNI for both players => same_dni', ( $samedni['errors']['p2_dni'] ?? '' ) === 'same_dni' && ! isset( $samedni['errors']['p1_dni'] ) );
+$okdni = RF::validate( $dfg, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p1_dni' => 'x1234567l', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p2_phone' => '600111223', 'p2_dni' => '12345678z', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+check( 'dni: NIE and DNI accepted, normalized', array() === $okdni['errors'] && 'X1234567L' === $okdni['clean']['players'][0]['dni'] && '12345678Z' === $okdni['clean']['players'][1]['dni'] );
+// Two people may share an email now (family): the email is no longer the identity.
+$shared = RF::validate( $dfg, array( 1 ), array( 'category_id' => 1, 'p1_name' => 'Anna', 'p1_email' => 'a@b.cat', 'p1_phone' => '600111222', 'p1_dni' => '12345678Z', 'p2_name' => 'Pere', 'p2_email' => 'p@b.cat', 'p2_phone' => '600111223', 'p2_dni' => '00000001R', 'consent' => array( 'data' => 1, 'health' => 1 ) ) );
+check( 'dni: different DNI, valid pair', array() === $shared['errors'] );
+
+// Manual registration / edit: DNI required, valid, different.
+$m0 = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B' ) );
+check( 'manual: DNI required for both', 'required' === ( $m0['errors']['p1_dni'] ?? '' ) && 'required' === ( $m0['errors']['p2_dni'] ?? '' ) );
+$m1 = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_dni' => '12345678A', 'p2_dni' => 'x' ) );
+check( 'manual: invalid DNI', 'invalid_dni' === ( $m1['errors']['p1_dni'] ?? '' ) && 'invalid_dni' === ( $m1['errors']['p2_dni'] ?? '' ) );
+$m2 = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_dni' => '12345678Z', 'p2_dni' => '12.345.678-z' ) );
+check( 'manual: same DNI twice', 'same_dni' === ( $m2['errors']['p2_dni'] ?? '' ) );
+$m3 = MR::players( array( 'p1_name' => 'A', 'p2_name' => 'B', 'p1_dni' => 'x1234567l', 'p2_dni' => '00000001r' ) );
+check( 'manual: DNIs normalized in clean players', array() === $m3['errors'] && 'X1234567L' === $m3['players'][0]['dni'] && '00000001R' === $m3['players'][1]['dni'] );
+$m4 = MR::validate( array( 'category_id' => '7', 'p1_name' => 'A', 'p2_name' => 'B' ), array( 7 ), array( 'ca' ) );
+check( 'manual validate: DNI errors surface', isset( $m4['errors']['p1_dni'] ) && isset( $m4['errors']['p2_dni'] ) );
+
+// --- Seeding ---
+use PadelCamps\Engine\Seeding;
+
+check( 'seeding: strength = points + manual/1000', 100.0 === Seeding::strength( 100, null ) && 100.0075 === Seeding::strength( 100, 7.5 ) && 0.0 === Seeding::strength( 0, null ) );
+check( 'seeding: manual rating never outweighs one point', Seeding::strength( 1, 0.0 ) > Seeding::strength( 0, 999.99 ) && Seeding::strength( 0, 99.99 ) < 1.0 );
+check( 'seeding: out-of-range manual rating is clamped', Seeding::strength( 5, 5000.0 ) === 5.99999 || abs( Seeding::strength( 5, 5000.0 ) - 5.99999 ) < 1e-9 );
+check( 'seeding: negative manual rating counts as 0', 5.0 === Seeding::strength( 5, -3.0 ) );
+check( 'seeding: negative points (penalty) lower the strength', Seeding::strength( -20, 50.0 ) < Seeding::strength( 0, 0.0 ) );
+
+$ents = array(
+	array( 'id' => 1, 'rating' => '7.50', 'group_no' => null ),
+	array( 'id' => 2, 'rating' => null ),
+	array( 'id' => 3, 'rating' => 9.0 ),
+	array( 'id' => 4, 'rating' => 0 ),
+);
+$app = Seeding::apply( $ents, array( 2 => 120, 3 => 40, 99 => 1000 ) );
+check( 'seeding: apply keeps order and extra keys', array( 1, 2, 3, 4 ) === array_column( $app, 'id' ) && array_key_exists( 'group_no', $app[0] ) );
+check( 'seeding: apply adds season points (missing = 0)', array( 0, 120, 40, 0 ) === array_column( $app, 'season_points' ) );
+check( 'seeding: apply keeps the manual rating as it was', array( 7.5, null, 9.0, 0.0 ) === array_column( $app, 'manual_rating' ) );
+check( 'seeding: apply sets rating to the strength', 120.0 === $app[1]['rating'] && 40.009 === $app[2]['rating'] && 0.0075 === $app[0]['rating'] );
+check( 'seeding: ordered = points first, manual rating breaks ties, then id', array( 2, 3, 1, 4 ) === array_column( Seeding::ordered( $app ), 'id' ) );
+$tie = Seeding::ordered( Seeding::apply( array( array( 'id' => 5, 'rating' => 3 ), array( 'id' => 6, 'rating' => 3 ), array( 'id' => 7, 'rating' => 8 ) ), array( 5 => 10, 6 => 10, 7 => 10 ) ) );
+check( 'seeding: equal points and rating tie by id', array( 7, 5, 6 ) === array_column( $tie, 'id' ) );
+$none = Seeding::ordered( Seeding::apply( $ents, array() ) );
+check( 'seeding: with no season points the order is the old one (manual rating, then id)', array( 3, 1, 2, 4 ) === array_column( $none, 'id' ) );
+$old = $ents;
+usort( $old, static fn( $a, $b ) => ( (float) ( $b['rating'] ?? 0 ) <=> (float) ( $a['rating'] ?? 0 ) ) ?: ( $a['id'] <=> $b['id'] ) );
+check( 'seeding: ...and identical to sorting by the raw rating as before', array_column( $old, 'id' ) === array_column( $none, 'id' ) );
+check( 'seeding: pair points = sum of both players', 130 === Seeding::pair_points( array( 1, 2 ), array( 1 => 100, 2 => 30, 3 => 999 ) ) && 100 === Seeding::pair_points( array( 1, 2 ), array( 1 => 100 ) ) && 0 === Seeding::pair_points( array(), array( 1 => 5 ) ) );
+check( 'seeding: pair points count a repeated player once', 100 === Seeding::pair_points( array( 1, 1 ), array( 1 => 100 ) ) );
+// The draw sorts by `rating`: the strength must drive Draw/DrawPlan unchanged.
+$st = Seeding::apply( array( array( 'id' => 11, 'rating' => 50 ), array( 'id' => 12, 'rating' => 1 ), array( 'id' => 13, 'rating' => null ) ), array( 12 => 30, 13 => 60 ) );
+check( 'seeding: DrawPlan::by_rating follows the strength', array( 13, 12, 11 ) === DrawPlan::by_rating( $st ) );
+check( 'seeding: DrawPlan seeds follow the strength', array( 13, 12 ) === array_slice( DrawPlan::assign_seeds( $st, 'x' ), 0, 2 ) );
+
+// --- PublicRanking ---
+use PadelCamps\Engine\PublicRanking as PR;
+
+$tot = array(
+	array( 'player_id' => 7, 'name' => 'Anna Puig Serra', 'club' => 'CT Vic', 'dni' => '12345678Z', 'email' => 'a@x.cat', 'points' => 100, 'tournaments' => 2 ),
+	array( 'player_id' => 8, 'name' => 'Pere Soler Mas', 'points' => 100, 'tournaments' => 1 ),
+	array( 'player_id' => 9, 'name' => 'Joan Roca', 'points' => 70, 'tournaments' => 1 ),
+	array( 'player_id' => 10, 'name' => 'Marta Gil Vidal', 'points' => 0, 'tournaments' => 1 ),
+	array( 'player_id' => 11, 'name' => 'Ruben Ferrer', 'points' => -20, 'tournaments' => 1 ),
+	array( 'player_id' => 12, 'name' => 'Laia', 'points' => 70, 'tournaments' => 3 ),
+);
+$pr = PR::rows( $tot, 'initials' );
+check( 'public ranking: zero and negative totals are not shown', 4 === count( $pr ) && ! in_array( 'Marta G.', array_column( $pr, 'name' ), true ) && ! in_array( 'Ruben F.', array_column( $pr, 'name' ), true ) );
+check( 'public ranking: ties share the position (1,1,3,3)', array( 1, 1, 3, 3 ) === array_column( $pr, 'position' ) );
+check( 'public ranking: sorted by points desc', array( 100, 100, 70, 70 ) === array_column( $pr, 'points' ) );
+check( 'public ranking: initials mode', 'Anna P.' === $pr[0]['name'] && 'Pere S.' === $pr[1]['name'] && 'Joan R.' === $pr[2]['name'] && 'Laia' === $pr[3]['name'] );
+check( 'public ranking: ties keep the incoming order', 'Joan R.' === $pr[2]['name'] && 'Laia' === $pr[3]['name'] );
+check( 'public ranking: full mode', 'Anna Puig Serra' === PR::rows( $tot, 'full' )[0]['name'] );
+check( 'public ranking: unknown mode falls back to initials (private by default)', 'Anna P.' === PR::rows( $tot, 'whatever' )[0]['name'] );
+check( 'public ranking: tournaments carried', 2 === $pr[0]['tournaments'] && 3 === $pr[3]['tournaments'] );
+$keys = array();
+foreach ( PR::rows( $tot, 'full' ) as $row ) {
+	$keys = array_merge( $keys, array_keys( $row ) );
+}
+check( 'public ranking: only position, name, tournaments, points leave the engine (no id, club, DNI, email)', array( 'position', 'name', 'tournaments', 'points' ) === array_values( array_unique( $keys ) ) );
+check( 'public ranking: empty input', array() === PR::rows( array(), 'full' ) && array() === PR::rows( array( array( 'name' => 'X', 'points' => 0 ) ), 'full' ) );
+check( 'public ranking: mode()', 'full' === PR::mode( 'full' ) && 'initials' === PR::mode( 'initials' ) && 'initials' === PR::mode( 'x' ) && 'initials' === PR::mode( null ) && 'initials' === PR::mode( array() ) );
+
+// --- PlayerEdit ---
+use PadelCamps\Engine\PlayerEdit;
+
+$pe = PlayerEdit::validate( array( 'name' => '  Anna <b>Puig</b> ', 'dni' => ' 12.345.678-z ', 'email' => 'ANNA@Example.com', 'phone' => '600 11 22 33', 'club' => '<i>CT</i> Vic' ) );
+check( 'player edit: valid data cleaned', array() === $pe['errors'] && $pe['clean'] === array( 'name' => 'Anna Puig', 'dni' => '12345678Z', 'email' => 'anna@example.com', 'phone' => '600 11 22 33', 'club' => 'CT Vic' ) );
+$pe = PlayerEdit::validate( array() );
+check( 'player edit: name and DNI required by default', 'required' === ( $pe['errors']['name'] ?? '' ) && 'required' === ( $pe['errors']['dni'] ?? '' ) && ! isset( $pe['errors']['email'] ) && ! isset( $pe['errors']['phone'] ) );
+$pe = PlayerEdit::validate( array( 'name' => 'Anna' ), false );
+check( 'player edit: legacy player may stay without DNI', array() === $pe['errors'] && '' === $pe['clean']['dni'] );
+$pe = PlayerEdit::validate( array( 'name' => 'Anna', 'dni' => '12345678A', 'email' => 'nope', 'phone' => 'abc' ), false );
+check( 'player edit: invalid DNI/email/phone', 'invalid_dni' === ( $pe['errors']['dni'] ?? '' ) && 'invalid_email' === ( $pe['errors']['email'] ?? '' ) && 'invalid_phone' === ( $pe['errors']['phone'] ?? '' ) );
+check( 'player edit: garbage DNI invalid even when optional', 'invalid_dni' === ( PlayerEdit::validate( array( 'name' => 'A', 'dni' => 'hola' ), false )['errors']['dni'] ?? '' ) );
+check( 'player edit: non-string input ignored', 'required' === ( PlayerEdit::validate( array( 'name' => array( 'x' ), 'dni' => 12345678 ) )['errors']['name'] ?? '' ) );
+
+$adj = PlayerEdit::adjustment( array( 'points' => '+25', 'note' => '  Bonus <b>fair play</b> ' ) );
+check( 'adjustment: positive with sign', array() === $adj['errors'] && 25 === $adj['clean']['points'] && 'Bonus fair play' === $adj['clean']['note'] );
+check( 'adjustment: negative', array() === PlayerEdit::adjustment( array( 'points' => '-10', 'note' => 'Sanció' ) )['errors'] && -10 === PlayerEdit::adjustment( array( 'points' => '-10', 'note' => 'x' ) )['clean']['points'] );
+check( 'adjustment: zero invalid', 'invalid' === ( PlayerEdit::adjustment( array( 'points' => '0', 'note' => 'x' ) )['errors']['points'] ?? '' ) && 'invalid' === ( PlayerEdit::adjustment( array( 'points' => '-0', 'note' => 'x' ) )['errors']['points'] ?? '' ) );
+check( 'adjustment: not a number invalid', 'invalid' === ( PlayerEdit::adjustment( array( 'points' => '1.5', 'note' => 'x' ) )['errors']['points'] ?? '' ) && 'invalid' === ( PlayerEdit::adjustment( array( 'points' => 'abc', 'note' => 'x' ) )['errors']['points'] ?? '' ) && 'invalid' === ( PlayerEdit::adjustment( array( 'points' => '1e3', 'note' => 'x' ) )['errors']['points'] ?? '' ) );
+check( 'adjustment: too big invalid, limit ok', 'invalid' === ( PlayerEdit::adjustment( array( 'points' => '100001', 'note' => 'x' ) )['errors']['points'] ?? '' ) && array() === PlayerEdit::adjustment( array( 'points' => '100000', 'note' => 'x' ) )['errors'] && array() === PlayerEdit::adjustment( array( 'points' => '-100000', 'note' => 'x' ) )['errors'] );
+check( 'adjustment: points and note required', 'required' === ( PlayerEdit::adjustment( array() )['errors']['points'] ?? '' ) && 'required' === ( PlayerEdit::adjustment( array( 'points' => '5' ) )['errors']['note'] ?? '' ) && 'required' === ( PlayerEdit::adjustment( array( 'points' => '5', 'note' => '  <i></i> ' ) )['errors']['note'] ?? '' ) );
+check( 'adjustment: int input accepted', array() === PlayerEdit::adjustment( array( 'points' => 7, 'note' => 'x' ) )['errors'] );
 
 // --- I18n: every string of the plugin is translated in the shipped languages ---
 $catalog = Catalog::scan( dirname( __DIR__ ) );

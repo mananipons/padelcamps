@@ -41,23 +41,34 @@ final class RegistrationRepository {
 		return $out;
 	}
 
-	/** True when someone with this email already has a non-cancelled registration in the category. */
-	public function has_active_registration( int $category_id, string $email ): bool {
+	/**
+	 * True when this person already has a non-cancelled registration in the category.
+	 * The person is the DNI/NIE; players saved before the DNI was mandatory (no DNI yet)
+	 * are still recognised by their email.
+	 */
+	public function has_active_registration( int $category_id, string $dni, string $email = '' ): bool {
 		global $wpdb;
-		if ( '' === $email ) {
+		if ( '' === $dni && '' === $email ) {
 			return false;
 		}
 		$r  = self::t( 'registrations' );
 		$rp = self::t( 'registration_players' );
 		$p  = self::t( 'players' );
+
+		$match = array();
+		if ( '' !== $dni ) {
+			$match[] = $wpdb->prepare( 'p.dni = %s', $dni );
+		}
+		if ( '' !== $email ) {
+			$match[] = $wpdb->prepare( '(p.dni IS NULL AND p.email = %s)', $email );
+		}
 		return (bool) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT r.id FROM {$r} r
 				INNER JOIN {$rp} rp ON rp.registration_id = r.id
 				INNER JOIN {$p} p ON p.id = rp.player_id
-				WHERE r.category_id = %d AND r.status <> 'cancelled' AND p.email = %s LIMIT 1",
-				$category_id,
-				$email
+				WHERE r.category_id = %d AND r.status <> 'cancelled' AND (" . implode( ' OR ', $match ) . ') LIMIT 1',
+				$category_id
 			)
 		);
 	}
@@ -93,9 +104,23 @@ final class RegistrationRepository {
 		$status   = isset( $data['status'] ) && RegistrationStatus::is_valid( $data['status'] )
 			? $data['status']
 			: RegistrationForm::initial_status( null === $category['max_teams'] ? null : (int) $category['max_teams'], $occupied );
-		$amount   = (float) $category['price'];
-		$payment  = $amount > 0 ? ( isset( $data['payment_status'] ) && RegistrationStatus::PAYMENT_PAID === $data['payment_status'] ? RegistrationStatus::PAYMENT_PAID : 'pending' ) : 'free';
-		$p1       = $data['players'][0];
+		// The category price is per player: each player pays their own fee.
+		$price  = (float) $category['price'];
+		$amount = round( $price * count( $data['players'] ), 2 );
+		// Who has already paid (manual registration): 'player_payments' => [position => 'paid'|'pending'],
+		// or 'payment_status' => 'paid' for everybody.
+		$player_pay = array();
+		foreach ( array_keys( $data['players'] ) as $i ) {
+			if ( $price <= 0 ) {
+				$player_pay[ $i ] = RegistrationStatus::PAYMENT_FREE;
+				continue;
+			}
+			$wanted           = $data['player_payments'][ $i ] ?? ( $data['payment_status'] ?? '' );
+			$player_pay[ $i ] = RegistrationStatus::PAYMENT_PAID === $wanted ? RegistrationStatus::PAYMENT_PAID : RegistrationStatus::PAYMENT_PENDING;
+		}
+		$payment = RegistrationStatus::aggregate( $player_pay );
+		$now     = current_time( 'mysql' );
+		$p1      = $data['players'][0];
 
 		$answers = array(
 			'players'      => array_map(
@@ -121,7 +146,7 @@ final class RegistrationRepository {
 				'category_id'    => (int) $category['id'],
 				'status'         => $status,
 				'payment_status' => $payment,
-				'paid_at'        => RegistrationStatus::PAYMENT_PAID === $payment ? current_time( 'mysql' ) : null,
+				'paid_at'        => RegistrationStatus::PAYMENT_PAID === $payment ? $now : null,
 				'amount'         => $amount,
 				'contact_name'   => $p1['name'],
 				'contact_email'  => $p1['email'],
@@ -146,6 +171,9 @@ final class RegistrationRepository {
 					'registration_id' => $registration_id,
 					'player_id'       => $player_id,
 					'position'        => $i + 1,
+					'amount'          => $price > 0 ? $price : 0,
+					'payment_status'  => $player_pay[ $i ],
+					'paid_at'         => RegistrationStatus::PAYMENT_PAID === $player_pay[ $i ] ? $now : null,
 				)
 			) ) {
 				$wpdb->query( 'ROLLBACK' );
@@ -155,9 +183,11 @@ final class RegistrationRepository {
 
 		$wpdb->query( 'COMMIT' );
 		return array(
-			'id'     => $registration_id,
-			'status' => $status,
-			'amount' => $amount,
+			'id'      => $registration_id,
+			'status'  => $status,
+			'amount'  => $amount, // whole pair
+			'price'   => $price,  // per player
+			'payment' => $payment,
 		);
 	}
 
@@ -189,7 +219,10 @@ final class RegistrationRepository {
 		if ( ! empty( $f['status'] ) && RegistrationStatus::is_valid( $f['status'] ) ) {
 			$sql .= $wpdb->prepare( ' AND r.status = %s', $f['status'] );
 		}
-		if ( ! empty( $f['payment_status'] ) && RegistrationStatus::is_valid_payment( $f['payment_status'] ) ) {
+		if ( 'unpaid' === ( $f['payment_status'] ?? '' ) ) {
+			// Not fully paid yet: nobody paid, or only some of the players.
+			$sql .= " AND r.payment_status IN ('pending','partial')";
+		} elseif ( ! empty( $f['payment_status'] ) && RegistrationStatus::is_valid_payment( $f['payment_status'] ) ) {
 			$sql .= $wpdb->prepare( ' AND r.payment_status = %s', $f['payment_status'] );
 		}
 		if ( isset( $f['s'] ) && '' !== trim( $f['s'] ) ) {
@@ -235,7 +268,8 @@ final class RegistrationRepository {
 		$rp   = self::t( 'registration_players' );
 		$p    = self::t( 'players' );
 		$rows = $wpdb->get_results(
-			"SELECT rp.registration_id, rp.position, p.* FROM {$rp} rp INNER JOIN {$p} p ON p.id = rp.player_id
+			"SELECT rp.registration_id, rp.position, p.*, rp.id AS rp_id, rp.amount AS pay_amount, rp.payment_status AS pay_status, rp.paid_at AS pay_paid_at
+			FROM {$rp} rp INNER JOIN {$p} p ON p.id = rp.player_id
 			WHERE rp.registration_id IN ({$list}) ORDER BY rp.registration_id, rp.position",
 			ARRAY_A
 		);
@@ -273,7 +307,14 @@ final class RegistrationRepository {
 			. self::from() . $this->where( $filters ) . ' GROUP BY r.status, r.payment_status',
 			ARRAY_A
 		);
-		return RegistrationStatus::summarize( $rows ?: array() );
+		// Money is per player: each player pays their own fee.
+		$money = $wpdb->get_results(
+			'SELECT r.status, pp.payment_status, COALESCE(SUM(pp.amount), 0) AS total '
+			. self::from() . ' INNER JOIN ' . self::t( 'registration_players' ) . ' pp ON pp.registration_id = r.id'
+			. $this->where( $filters ) . ' GROUP BY r.status, pp.payment_status',
+			ARRAY_A
+		);
+		return RegistrationStatus::summarize( $rows ?: array(), $money ?: array() );
 	}
 
 	/** Places taken and waiting list per category of a tournament. */
@@ -334,16 +375,78 @@ final class RegistrationRepository {
 	public function set_payment( array $ids, string $payment ): int {
 		global $wpdb;
 		$ids = array_values( array_filter( array_map( 'intval', $ids ) ) );
-		if ( ! $ids || ! RegistrationStatus::is_valid_payment( $payment ) || RegistrationStatus::PAYMENT_FREE === $payment ) {
+		if ( ! $ids || ! RegistrationStatus::is_valid_player_payment( $payment ) || RegistrationStatus::PAYMENT_FREE === $payment ) {
 			return 0;
 		}
+		// Every player of the registrations (the pair pays in full, or is refunded in full).
 		$list    = implode( ',', $ids );
 		$paid_at = RegistrationStatus::PAYMENT_PAID === $payment ? current_time( 'mysql' ) : null;
-		$sql     = 'UPDATE ' . self::t( 'registrations' ) . ' SET payment_status = %s, paid_at = ' . ( null === $paid_at ? 'NULL' : '%s' )
-			. " WHERE id IN ({$list}) AND amount > 0 AND payment_status <> %s";
+		$sql     = 'UPDATE ' . self::t( 'registration_players' ) . ' SET payment_status = %s, paid_at = ' . ( null === $paid_at ? 'NULL' : '%s' )
+			. " WHERE registration_id IN ({$list}) AND amount > 0 AND payment_status <> %s";
 		$args    = null === $paid_at ? array( $payment, $payment ) : array( $payment, $paid_at, $payment );
 		$wpdb->query( $wpdb->prepare( $sql, ...$args ) );
-		return (int) $wpdb->rows_affected;
+		return $this->sync_payment( $ids );
+	}
+
+	/**
+	 * Payment of one player of a registration (position 1, 2…).
+	 *
+	 * @return bool whether something changed
+	 */
+	public function set_player_payment( int $registration_id, int $position, string $payment ): bool {
+		global $wpdb;
+		if ( ! RegistrationStatus::is_valid_player_payment( $payment ) || RegistrationStatus::PAYMENT_FREE === $payment ) {
+			return false;
+		}
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . self::t( 'registration_players' ) . ' SET payment_status = %s, paid_at = ' . ( RegistrationStatus::PAYMENT_PAID === $payment ? '%s' : 'NULL' )
+				. ' WHERE registration_id = %d AND position = %d AND amount > 0 AND payment_status <> %s',
+				...( RegistrationStatus::PAYMENT_PAID === $payment
+					? array( $payment, current_time( 'mysql' ), $registration_id, $position, $payment )
+					: array( $payment, $registration_id, $position, $payment ) )
+			)
+		);
+		$changed = $wpdb->rows_affected > 0;
+		$this->sync_payment( array( $registration_id ) );
+		return $changed;
+	}
+
+	/**
+	 * Recompute each registration's amount and payment from its players.
+	 *
+	 * @param int[] $ids
+	 * @return int registrations whose payment state changed
+	 */
+	public function sync_payment( array $ids ): int {
+		global $wpdb;
+		$ids = array_values( array_filter( array_map( 'intval', $ids ) ) );
+		if ( ! $ids ) {
+			return 0;
+		}
+		$list = implode( ',', $ids );
+		$rows = $wpdb->get_results(
+			'SELECT r.id, r.payment_status, GROUP_CONCAT(rp.payment_status ORDER BY rp.position) AS states,
+				COALESCE(SUM(rp.amount), 0) AS amount, MAX(rp.paid_at) AS paid_at
+			FROM ' . self::t( 'registrations' ) . ' r INNER JOIN ' . self::t( 'registration_players' ) . " rp ON rp.registration_id = r.id
+			WHERE r.id IN ({$list}) GROUP BY r.id, r.payment_status",
+			ARRAY_A
+		) ?: array();
+		$changed = 0;
+		foreach ( $rows as $row ) {
+			$state = RegistrationStatus::aggregate( explode( ',', (string) $row['states'] ) );
+			$wpdb->update(
+				self::t( 'registrations' ),
+				array(
+					'payment_status' => $state,
+					'amount'         => (float) $row['amount'],
+					'paid_at'        => RegistrationStatus::PAYMENT_PAID === $state ? $row['paid_at'] : null,
+				),
+				array( 'id' => (int) $row['id'] )
+			);
+			$changed += $state !== $row['payment_status'] ? 1 : 0;
+		}
+		return $changed;
 	}
 
 	/** Organizer-only data: private notes and the rating used for seeding. */
@@ -416,6 +519,8 @@ final class RegistrationRepository {
 		if ( $player_ids ) {
 			$plist = implode( ',', $player_ids );
 			$wpdb->query( "DELETE p FROM {$p} p LEFT JOIN {$rp} rp ON rp.player_id = p.id WHERE p.id IN ({$plist}) AND rp.id IS NULL" );
+			// Erased players take their ranking points (and adjustments) with them.
+			( new RankingRepository() )->delete_orphans();
 		}
 		$wpdb->query( 'COMMIT' );
 		return $deleted;
@@ -425,13 +530,32 @@ final class RegistrationRepository {
 	 * Organizer edits the players of a registration (name, email, phone, club).
 	 * The contact data of the registration follows player 1.
 	 *
-	 * @param array<int, array{name:string, email:string, phone:string, club:string}> $players by position (0 = player 1)
+	 * A DNI/NIE that already belongs to another player is refused (nothing is saved):
+	 * if it is the same person, the two players must be merged instead.
+	 *
+	 * @param array<int, array{name:string, email:string, phone:string, club:string, dni:string}> $players by position (0 = player 1)
+	 * @return array<string,string> errors by field (p1_dni / p2_dni => dni_taken); empty when saved
 	 */
-	public function update_players( int $registration_id, array $players ): void {
+	public function update_players( int $registration_id, array $players ): array {
 		global $wpdb;
 		$rp  = self::t( 'registration_players' );
 		$p   = self::t( 'players' );
 		$ids = $wpdb->get_results( $wpdb->prepare( "SELECT player_id, position FROM {$rp} WHERE registration_id = %d ORDER BY position", $registration_id ), ARRAY_A ) ?: array();
+
+		$errors = array();
+		foreach ( $ids as $row ) {
+			$player = $players[ (int) $row['position'] - 1 ] ?? null;
+			if ( $player && '' !== (string) ( $player['dni'] ?? '' ) ) {
+				$owner = $this->player_by_dni( (string) $player['dni'] );
+				if ( $owner && (int) $owner['id'] !== (int) $row['player_id'] ) {
+					$errors[ 'p' . (int) $row['position'] . '_dni' ] = 'dni_taken';
+				}
+			}
+		}
+		if ( $errors ) {
+			return $errors;
+		}
+
 		foreach ( $ids as $row ) {
 			$player = $players[ (int) $row['position'] - 1 ] ?? null;
 			if ( ! $player ) {
@@ -442,6 +566,7 @@ final class RegistrationRepository {
 				array(
 					'name'  => $player['name'],
 					'email' => $player['email'],
+					'dni'   => '' !== (string) ( $player['dni'] ?? '' ) ? $player['dni'] : null,
 					'phone' => '' !== $player['phone'] ? $player['phone'] : null,
 					'club'  => '' !== $player['club'] ? $player['club'] : null,
 				),
@@ -457,6 +582,7 @@ final class RegistrationRepository {
 			),
 			array( 'id' => $registration_id )
 		);
+		return array();
 	}
 
 	/** Other registrations (not this one) that share a player row with it, to warn before editing. */
@@ -471,39 +597,84 @@ final class RegistrationRepository {
 		);
 	}
 
+	/** Same name ignoring case, accents and extra spaces. */
+	private static function same_name( string $a, string $b ): bool {
+		$norm = static fn( string $s ): string => strtolower( trim( (string) preg_replace( '/\s+/', ' ', remove_accents( $s ) ) ) );
+		return '' !== $norm( $a ) && $norm( $a ) === $norm( $b );
+	}
+
+	/** The player that owns a DNI/NIE (already normalized), or null. */
+	public function player_by_dni( string $dni ): ?array {
+		global $wpdb;
+		if ( '' === $dni ) {
+			return null;
+		}
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::t( 'players' ) . ' WHERE dni = %s LIMIT 1', $dni ), ARRAY_A );
+		return $row ?: null;
+	}
+
 	/**
-	 * Reuse the player with the same email. Existing data is never overwritten
-	 * (anyone could type someone else's email); only empty fields are completed.
+	 * Resolve a player. The DNI/NIE is the identity: the same DNI is always the same
+	 * player, whatever name, email or phone is typed. Existing data is never overwritten
+	 * (anyone could type someone else's DNI); only empty fields are completed.
+	 *
+	 * Players created before the DNI was mandatory have no DNI: when one of them registers
+	 * again with the same email AND the same name, that row adopts the DNI (so history and
+	 * points stay with the person). Anything less certain creates a new player instead:
+	 * two people can share an email (family, club), and wrongly merging two people would
+	 * mix their points. Real duplicates are resolved by merging them by hand.
 	 */
 	private function player_id( array $player ): int {
 		global $wpdb;
-		$p = self::t( 'players' );
+		$p   = self::t( 'players' );
+		$dni = (string) ( $player['dni'] ?? '' );
 
-		if ( '' !== $player['email'] ) {
-			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$p} WHERE email = %s ORDER BY id ASC LIMIT 1", $player['email'] ), ARRAY_A );
-			if ( $existing ) {
-				$fill = array();
-				foreach ( array( 'phone', 'club' ) as $field ) {
-					if ( '' === (string) $existing[ $field ] && '' !== $player[ $field ] ) {
-						$fill[ $field ] = $player[ $field ];
+		$existing = null;
+		if ( '' !== $dni ) {
+			$existing = $this->player_by_dni( $dni );
+			if ( ! $existing && '' !== $player['email'] ) {
+				$legacy = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$p} WHERE email = %s AND dni IS NULL ORDER BY id ASC", $player['email'] ), ARRAY_A ) ?: array();
+				foreach ( $legacy as $row ) {
+					if ( self::same_name( (string) $row['name'], (string) $player['name'] ) ) {
+						$existing = $row;
+						$wpdb->update( $p, array( 'dni' => $dni ), array( 'id' => (int) $row['id'] ) );
+						break;
 					}
 				}
-				if ( $fill ) {
-					$wpdb->update( $p, $fill, array( 'id' => (int) $existing['id'] ) );
-				}
-				return (int) $existing['id'];
 			}
+		} elseif ( '' !== $player['email'] ) {
+			// No DNI (only reachable from code paths that skip validation): legacy behaviour.
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$p} WHERE email = %s ORDER BY id ASC LIMIT 1", $player['email'] ), ARRAY_A );
 		}
 
-		$wpdb->insert(
+		if ( $existing ) {
+			$fill = array();
+			foreach ( array( 'phone', 'club' ) as $field ) {
+				if ( '' === (string) $existing[ $field ] && '' !== $player[ $field ] ) {
+					$fill[ $field ] = $player[ $field ];
+				}
+			}
+			if ( $fill ) {
+				$wpdb->update( $p, $fill, array( 'id' => (int) $existing['id'] ) );
+			}
+			return (int) $existing['id'];
+		}
+
+		$inserted = $wpdb->insert(
 			$p,
 			array(
 				'name'  => $player['name'],
 				'email' => $player['email'],
+				'dni'   => '' !== $dni ? $dni : null,
 				'phone' => '' !== $player['phone'] ? $player['phone'] : null,
 				'club'  => '' !== $player['club'] ? $player['club'] : null,
 			)
 		);
+		if ( ! $inserted && '' !== $dni ) {
+			// Two submissions with the same DNI raced: the other one won, reuse its row.
+			$other = $this->player_by_dni( $dni );
+			return $other ? (int) $other['id'] : 0;
+		}
 		return (int) $wpdb->insert_id;
 	}
 }

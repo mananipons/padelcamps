@@ -48,12 +48,12 @@ final class TvPage {
 		echo '<!doctype html><html lang="' . esc_attr( get_bloginfo( 'language' ) ) . '"><head><meta charset="utf-8">';
 		echo '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">';
 		echo '<title>' . esc_html( $t['name'] ) . '</title>';
-		echo '<link rel="stylesheet" href="' . esc_url( PADELCAMPS_URL . 'assets/css/draw.css?ver=' . PADELCAMPS_VERSION ) . '">';
-		echo '<link rel="stylesheet" href="' . esc_url( PADELCAMPS_URL . 'assets/css/tv.css?ver=' . PADELCAMPS_VERSION ) . '">';
+		echo '<link rel="stylesheet" href="' . esc_url( PADELCAMPS_URL . 'assets/css/draw.css?ver=' . PADELCAMPS_VERSION . '.' . filemtime( PADELCAMPS_PATH . 'assets/css/draw.css' ) ) . '">';
+		echo '<link rel="stylesheet" href="' . esc_url( PADELCAMPS_URL . 'assets/css/tv.css?ver=' . PADELCAMPS_VERSION . '.' . filemtime( PADELCAMPS_PATH . 'assets/css/tv.css' ) ) . '">';
 		echo '</head><body class="pc-tv-body">';
 		echo str_replace( '<div class="pc-draw pc-tv"', '<div class="pc-draw pc-tv" data-pc-rotate="' . (int) self::ROTATE . '"', LiveView::wrap( 'tv', $t, 0, $inner, true, false, 'pc-draw pc-tv' ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped by LiveView/inner().
 		echo '<script>var padelcampsPublic = ' . wp_json_encode( $i18n ) . ';</script>';
-		echo '<script src="' . esc_url( PADELCAMPS_URL . 'assets/js/public.js?ver=' . PADELCAMPS_VERSION ) . '"></script>';
+		echo '<script src="' . esc_url( PADELCAMPS_URL . 'assets/js/public.js?ver=' . PADELCAMPS_VERSION . '.' . filemtime( PADELCAMPS_PATH . 'assets/js/public.js' ) ) . '"></script>';
 		echo '</body></html>';
 		exit;
 	}

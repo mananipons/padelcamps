@@ -6,8 +6,10 @@ use PadelCamps\Db\RegistrationRepository;
 use PadelCamps\Db\TournamentRepository;
 use PadelCamps\Engine\DrawPlan;
 use PadelCamps\Engine\ScoreParser;
+use PadelCamps\Engine\Seeding;
 use PadelCamps\Engine\TournamentStatus;
 use PadelCamps\Service\DrawService;
+use PadelCamps\Service\SeedingService;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -137,17 +139,15 @@ final class DrawTab {
 
 		echo '<style>.pc-ko{display:flex;gap:16px;overflow-x:auto;align-items:flex-start}.pc-ko-round{min-width:260px}.pc-ko-match{background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:8px 10px;margin:0 0 10px}.pc-ko-match .w{font-weight:600}.pc-q td{background:#f0f6fc}.pc-inline{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.pc-inline input[type=text]{width:110px}.pc-inline select{max-width:170px}</style>';
 
-		echo '<ul class="subsubsub" style="float:none;margin-bottom:1em">';
-		foreach ( $categories as $i => $c ) {
-			printf(
-				'<li>%s<a href="%s"%s>%s</a></li>',
-				$i ? ' | ' : '',
-				esc_url( self::url( $tid, (int) $c['id'] ) ),
-				(int) $c['id'] === $cid ? ' class="current" aria-current="page"' : '',
-				esc_html( $c['name'] )
+		$items = array();
+		foreach ( $categories as $c ) {
+			$items[] = array(
+				'label'   => $c['name'],
+				'url'     => self::url( $tid, (int) $c['id'] ),
+				'current' => (int) $c['id'] === $cid,
 			);
 		}
-		echo '</ul>';
+		SubNav::render( $items, __( 'Categories', 'padelcamps' ) );
 
 		if ( '' !== $msg && '' !== self::message( $msg ) ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( self::message( $msg ) ) . '</p></div>';
@@ -182,6 +182,8 @@ final class DrawTab {
 			echo '<p class="description">' . esc_html__( 'Les inscripcions encara estan obertes: si fas el sorteig ara, les noves inscripcions confirmades no hi entraran fins que el refacis.', 'padelcamps' ) . '</p>';
 		}
 
+		$this->seeding_panel( $category, $names, $drawn );
+
 		if ( ! $drawn ) {
 			$this->draw_form( $tid, $category, $phases, false );
 			return;
@@ -213,6 +215,38 @@ final class DrawTab {
 		if ( $phases['consolation'] ) {
 			$this->render_knockout( $tid, $category, $phases, $matches, $names, 'consolation' );
 		}
+	}
+
+	/**
+	 * Why the pairs are seeded the way they are: the season points of each pair (other
+	 * tournaments) and, to break ties, the manual rating. Without a season ranking only the
+	 * manual rating counts.
+	 */
+	private function seeding_panel( array $category, array $names, bool $drawn ): void {
+		$service = new SeedingService( $this->draws );
+		$source  = $service->source( $category );
+		if ( ! $source ) {
+			echo '<p class="description">' . esc_html__( 'Els caps de sèrie i els grups s’ordenen només per la puntuació manual de cada inscripció (aquest torneig no té una temporada amb rànquing o aquesta categoria no té categoria de rànquing).', 'padelcamps' ) . '</p>';
+			return;
+		}
+		$entrants = Seeding::ordered( $service->entrants( $category ) );
+
+		echo '<details class="pc-details" style="margin:0 0 1em"><summary class="button">' . esc_html__( 'Ordre de caps de sèrie', 'padelcamps' ) . '</summary>';
+		/* translators: 1: season name, 2: ranking category name */
+		echo '<p class="description">' . esc_html( sprintf( __( 'Els caps de sèrie i els grups s’ordenen pels punts que els dos jugadors de cada parella tenen a la temporada «%1$s», categoria «%2$s» (sense comptar aquest torneig). En cas d’empat, decideix la puntuació manual de la inscripció.', 'padelcamps' ), $source['season']['name'], $source['ranking_category']['name'] ) );
+		if ( $drawn ) {
+			echo ' ' . esc_html__( 'És l’ordre d’ara: el sorteig ja fet no canvia fins que el refacis.', 'padelcamps' );
+		}
+		echo '</p>';
+		if ( ! $entrants ) {
+			echo '<p class="description">' . esc_html__( 'Encara no hi ha parelles confirmades.', 'padelcamps' ) . '</p></details>';
+			return;
+		}
+		echo '<table class="widefat striped" style="max-width:760px"><thead><tr><th>#</th><th>' . esc_html__( 'Parella', 'padelcamps' ) . '</th><th>' . esc_html__( 'Punts de temporada', 'padelcamps' ) . '</th><th>' . esc_html__( 'Puntuació manual', 'padelcamps' ) . '</th></tr></thead><tbody>';
+		foreach ( $entrants as $i => $e ) {
+			echo '<tr><td>' . (int) ( $i + 1 ) . '</td><td>' . esc_html( $names[ (int) $e['id'] ] ?? '#' . $e['id'] ) . '</td><td><strong>' . (int) $e['season_points'] . '</strong></td><td>' . esc_html( null === $e['manual_rating'] ? '—' : number_format_i18n( (float) $e['manual_rating'], 2 ) ) . '</td></tr>';
+		}
+		echo '</tbody></table></details>';
 	}
 
 	private function form_open( int $tid, int $cid, string $op, string $confirm = '' ): void {

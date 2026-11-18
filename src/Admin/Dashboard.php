@@ -186,7 +186,7 @@ final class Dashboard {
 		}
 		if ( $s['unpaid_confirmed'] ) {
 			/* translators: %d: pairs */
-			$items[] = array( sprintf( _n( '%d parella confirmada encara no ha pagat', '%d parelles confirmades encara no han pagat', $s['unpaid_confirmed'], 'padelcamps' ), $s['unpaid_confirmed'] ), self::tab_url( $tid, 'registrations', array( 'status' => 'confirmed', 'pay' => 'pending' ) ) );
+			$items[] = array( sprintf( _n( '%d parella confirmada encara no ha pagat del tot', '%d parelles confirmades encara no han pagat del tot', $s['unpaid_confirmed'], 'padelcamps' ), $s['unpaid_confirmed'] ), self::tab_url( $tid, 'registrations', array( 'status' => 'confirmed', 'pay' => 'unpaid' ) ) );
 		}
 		if ( $s['reports_disputed'] ) {
 			/* translators: %d: results */

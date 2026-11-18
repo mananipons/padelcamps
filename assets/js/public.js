@@ -73,6 +73,40 @@
 		panels.forEach( function ( p, i ) {
 			p.classList.toggle( 'is-active', i === index );
 		} );
+		marquee( root );
+	}
+
+	// Groups of the visible TV panel: one row, scrolling like a marquee when they do not fit.
+	function marquee( root ) {
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			return;
+		}
+		root.querySelectorAll( '.pc-tv-panel.is-active .pc-groups' ).forEach( function ( box ) {
+			if ( box.getAttribute( 'data-pc-marquee' ) ) {
+				return;
+			}
+			box.setAttribute( 'data-pc-marquee', '1' );
+			if ( box.scrollWidth <= box.clientWidth + 1 ) {
+				return;
+			}
+			var items = Array.prototype.slice.call( box.children );
+			var track = document.createElement( 'div' );
+			track.className = 'pc-groups-track';
+			items.forEach( function ( item ) {
+				track.appendChild( item );
+			} );
+			box.appendChild( track );
+			var gap = parseFloat( window.getComputedStyle( track ).columnGap ) || 0;
+			var one = track.getBoundingClientRect().width + gap;
+			items.forEach( function ( item ) {
+				var copy = item.cloneNode( true );
+				copy.setAttribute( 'aria-hidden', 'true' );
+				track.appendChild( copy );
+			} );
+			track.style.setProperty( '--pc-shift', one + 'px' );
+			track.style.setProperty( '--pc-dur', Math.max( 20, one / 60 ) + 's' );
+			track.classList.add( 'is-scrolling' );
+		} );
 	}
 
 	function initTv( root ) {

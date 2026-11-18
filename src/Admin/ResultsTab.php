@@ -19,15 +19,21 @@ final class ResultsTab {
 	private TournamentRepository $tournaments;
 	private ResultRepository $results;
 	private RegistrationRepository $regs;
+	private RankingPanel $ranking_panel;
+
+	/** Sub-page being shown: review | points | links. */
+	private string $sub = 'review';
 
 	public function __construct( TournamentRepository $tournaments ) {
-		$this->tournaments = $tournaments;
-		$this->results     = new ResultRepository();
-		$this->regs        = new RegistrationRepository();
+		$this->tournaments   = $tournaments;
+		$this->results       = new ResultRepository();
+		$this->regs          = new RegistrationRepository();
+		$this->ranking_panel = new RankingPanel( $tournaments );
 	}
 
 	public function register(): void {
 		add_action( 'admin_post_padelcamps_results', array( $this, 'handle' ) );
+		$this->ranking_panel->register();
 	}
 
 	private static function url( int $tid, array $extra = array() ): string {
@@ -36,7 +42,7 @@ final class ResultsTab {
 
 	private function form_open( int $tid, string $op, string $confirm = '' ): void {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline"' . ( '' !== $confirm ? ' onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');"' : '' ) . '>';
-		echo '<input type="hidden" name="action" value="padelcamps_results"><input type="hidden" name="op" value="' . esc_attr( $op ) . '"><input type="hidden" name="tid" value="' . esc_attr( (string) $tid ) . '">';
+		echo '<input type="hidden" name="action" value="padelcamps_results"><input type="hidden" name="op" value="' . esc_attr( $op ) . '"><input type="hidden" name="tid" value="' . esc_attr( (string) $tid ) . '"><input type="hidden" name="sub" value="' . esc_attr( $this->sub ) . '">';
 		wp_nonce_field( 'padelcamps_results' );
 	}
 
@@ -51,6 +57,9 @@ final class ResultsTab {
 	public function render( array $t ): void {
 		$tid     = (int) $t['id'];
 		$service = new ResultService();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only, whitelisted.
+		$sub       = isset( $_GET['sub'] ) ? sanitize_key( wp_unslash( $_GET['sub'] ) ) : 'review';
+		$this->sub = in_array( $sub, array( 'review', 'points', 'links' ), true ) ? $sub : 'review';
 		$enabled = $service->players_can_report( $t );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- display only.
@@ -75,8 +84,34 @@ final class ResultsTab {
 		$this->form_open( $tid, 'toggle' );
 		echo '<label><input type="checkbox" name="enabled" value="1"' . checked( $enabled, true, false ) . ' onchange="this.form.submit()"> ' . esc_html__( 'Els jugadors poden entrar resultats amb el seu enllaç', 'padelcamps' ) . '</label></form>';
 
-		$this->open_reports( $tid );
-		$this->links( $t );
+		$this->sub_nav( $tid );
+		if ( 'points' === $this->sub ) {
+			$this->ranking_panel->render( $t );
+		} elseif ( 'links' === $this->sub ) {
+			$this->links( $t );
+		} else {
+			$this->open_reports( $tid );
+		}
+	}
+
+	/** Sub-pages of this tab, as a boxed group of buttons. */
+	private function sub_nav( int $tid ): void {
+		$open = count( array_filter( $this->results->open_reports_of_tournament( $tid ), static fn( $r ) => 'played' !== $r['match_status'] ) );
+		$subs = array(
+			'review' => __( 'Resultats per revisar', 'padelcamps' ),
+			'points' => __( 'Punts del rànquing', 'padelcamps' ),
+			'links'  => __( 'Enllaços de les parelles', 'padelcamps' ),
+		);
+		$items = array();
+		foreach ( $subs as $key => $label ) {
+			$items[] = array(
+				'label'   => $label,
+				'url'     => self::url( $tid, 'review' === $key ? array() : array( 'sub' => $key ) ),
+				'current' => $key === $this->sub,
+				'count'   => 'review' === $key ? $open : 0,
+			);
+		}
+		SubNav::render( $items );
 	}
 
 	private function open_reports( int $tid ): void {
@@ -177,6 +212,10 @@ final class ResultsTab {
 				}
 				$args['rmsg'] = 'renewed';
 				break;
+		}
+		$sub = sanitize_key( $post( 'sub' ) );
+		if ( in_array( $sub, array( 'points', 'links' ), true ) ) {
+			$args['sub'] = $sub;
 		}
 		wp_safe_redirect( self::url( $tid, $args ) );
 		exit;

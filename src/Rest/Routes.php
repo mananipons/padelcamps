@@ -68,6 +68,16 @@ final class Routes {
 		);
 		register_rest_route(
 			self::NS,
+			'/seasons/(?P<id>\d+)/ranking',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_ranking' ),
+				'permission_callback' => '__return_true', // Public data only: published points, display names, no personal data.
+				'args'                => $args,
+			)
+		);
+		register_rest_route(
+			self::NS,
 			'/tournaments/(?P<id>\d+)/view',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
@@ -86,6 +96,18 @@ final class Routes {
 
 	private static function not_found(): \WP_Error {
 		return new \WP_Error( 'padelcamps_not_found', __( 'Aquest torneig no està disponible.', 'padelcamps' ), array( 'status' => 404 ) );
+	}
+
+	/** Public season ranking of one category (display names, tournaments, points: no personal data). */
+	public function get_ranking( \WP_REST_Request $request ) {
+		$public = new \PadelCamps\Service\PublicRanking();
+		$season = $public->season( (int) $request['id'] );
+		if ( ! $season ) {
+			return new \WP_Error( 'padelcamps_not_found', __( 'Aquest rànquing no està disponible.', 'padelcamps' ), array( 'status' => 404 ) );
+		}
+		$response = new \WP_REST_Response( $public->build( $season, (int) $request->get_param( 'category' ) ) );
+		$response->header( 'Cache-Control', 'public, max-age=60' );
+		return $response;
 	}
 
 	/** Public order of play (no personal data). */

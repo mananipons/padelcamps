@@ -1,6 +1,7 @@
 <?php
 namespace PadelCamps\Frontend;
 
+use PadelCamps\Db\SeasonRepository;
 use PadelCamps\Db\TournamentRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -62,6 +63,24 @@ final class Blocks {
 			)
 		);
 		register_block_type(
+			'padelcamps/ranking',
+			array(
+				'title'           => __( 'PadelCamps: rànquing de la temporada', 'padelcamps' ),
+				'description'     => __( 'Rànquing de jugadors d’una temporada, per categoria.', 'padelcamps' ),
+				'category'        => 'widgets',
+				'icon'            => 'chart-bar',
+				'editor_script'   => 'padelcamps-blocks',
+				'editor_style'    => 'padelcamps-draw-editor',
+				'attributes'      => array( 'season' => $id, 'category' => $category ),
+				'render_callback' => static fn( $a ) => ( new RankingShortcode() )->render(
+					array(
+						'season'   => (int) ( $a['season'] ?? 0 ),
+						'category' => (int) ( $a['category'] ?? 0 ),
+					)
+				),
+			)
+		);
+		register_block_type(
 			'padelcamps/registration',
 			array(
 				'title'           => __( 'PadelCamps: formulari d’inscripció', 'padelcamps' ),
@@ -103,12 +122,32 @@ final class Blocks {
 				),
 			);
 		}
+		$season_repo = new SeasonRepository();
+		$seasons     = array();
+		foreach ( $season_repo->all() as $s ) {
+			$seasons[] = array(
+				'id'         => (int) $s['id'],
+				'name'       => $s['name'],
+				'categories' => array_map(
+					static fn( $c ) => array(
+						'id'   => (int) $c['id'],
+						'name' => $c['name'],
+					),
+					$season_repo->ranking_categories( (int) $s['id'] )
+				),
+			);
+		}
 		wp_localize_script(
 			'padelcamps-blocks',
 			'padelcampsBlocks',
 			array(
 				'tournaments' => $tournaments,
+				'seasons'     => $seasons,
 				'labels'      => array(
+					'season'        => __( 'Temporada', 'padelcamps' ),
+					'currentSeason' => __( 'Temporada actual', 'padelcamps' ),
+					'rankingCat'    => __( 'Categoria de rànquing', 'padelcamps' ),
+					'chooseInPage'  => __( 'El visitant tria la categoria', 'padelcamps' ),
 					'settings'   => __( 'Configuració', 'padelcamps' ),
 					'tournament' => __( 'Torneig', 'padelcamps' ),
 					'choose'     => __( 'Tria un torneig a la barra lateral.', 'padelcamps' ),

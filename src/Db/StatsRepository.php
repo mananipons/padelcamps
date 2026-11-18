@@ -31,14 +31,26 @@ final class StatsRepository {
 					SUM(r.status = 'pending') AS pending,
 					SUM(r.status = 'waitlist') AS waitlist,
 					SUM(r.status = 'cancelled') AS cancelled,
-					COALESCE(SUM(CASE WHEN r.payment_status = 'paid' THEN r.amount END), 0) AS paid,
-					COALESCE(SUM(CASE WHEN r.payment_status = 'pending' AND r.status IN ('pending','confirmed') THEN r.amount END), 0) AS unpaid,
-					SUM(r.payment_status = 'pending' AND r.status = 'confirmed' AND r.amount > 0) AS unpaid_confirmed
+					SUM(r.payment_status IN ('pending','partial') AND r.status = 'confirmed' AND r.amount > 0) AS unpaid_confirmed
 				FROM {$r} r INNER JOIN {$c} c ON c.id = r.category_id WHERE c.tournament_id = %d",
 				$tid
 			),
 			ARRAY_A
 		) ?: array();
+
+		// Each player pays their own fee: money is summed per player.
+		$money = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT
+					COALESCE(SUM(CASE WHEN rp.payment_status = 'paid' THEN rp.amount END), 0) AS paid,
+					COALESCE(SUM(CASE WHEN rp.payment_status = 'pending' AND r.status IN ('pending','confirmed') THEN rp.amount END), 0) AS unpaid
+				FROM {$rp} rp INNER JOIN {$r} r ON r.id = rp.registration_id INNER JOIN {$c} c ON c.id = r.category_id WHERE c.tournament_id = %d",
+				$tid
+			),
+			ARRAY_A
+		) ?: array();
+		$regs['paid']   = $money['paid'] ?? 0;
+		$regs['unpaid'] = $money['unpaid'] ?? 0;
 
 		$players = (int) $wpdb->get_var(
 			$wpdb->prepare(
@@ -154,7 +166,7 @@ final class StatsRepository {
 			'registrations' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$r} WHERE status <> 'cancelled'" ),
 			'players'       => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT rp.player_id) FROM {$rp} rp INNER JOIN {$r} r ON r.id = rp.registration_id WHERE r.status <> 'cancelled'" ),
 			'played'        => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$m} WHERE status = 'played'" ),
-			'paid'          => (float) $wpdb->get_var( "SELECT COALESCE(SUM(amount), 0) FROM {$r} WHERE payment_status = 'paid'" ),
+			'paid'          => (float) $wpdb->get_var( "SELECT COALESCE(SUM(amount), 0) FROM {$rp} WHERE payment_status = 'paid'" ),
 			'clubs'         => (int) $wpdb->get_var(
 				'SELECT COUNT(DISTINCT LOWER(TRIM(p.club))) FROM ' . self::t( 'players' ) . " p INNER JOIN {$rp} rp ON rp.player_id = p.id INNER JOIN {$r} r ON r.id = rp.registration_id
 				WHERE r.status <> 'cancelled' AND p.club IS NOT NULL AND TRIM(p.club) <> ''"

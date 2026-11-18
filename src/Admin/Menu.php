@@ -16,10 +16,14 @@ final class Menu {
 
 	private TournamentsPage $tournaments;
 	private RegistrationsView $registrations;
+	private SeasonsPage $seasons;
+	private PlayersPage $players;
 
-	public function __construct( TournamentsPage $tournaments, RegistrationsView $registrations ) {
+	public function __construct( TournamentsPage $tournaments, RegistrationsView $registrations, SeasonsPage $seasons, PlayersPage $players ) {
 		$this->tournaments   = $tournaments;
 		$this->registrations = $registrations;
+		$this->seasons       = $seasons;
+		$this->players       = $players;
 	}
 
 	public function register(): void {
@@ -62,10 +66,13 @@ final class Menu {
 
 		add_submenu_page( self::SLUG, __( 'Tornejos', 'padelcamps' ), __( 'Tornejos', 'padelcamps' ), $cap, TournamentsPage::SLUG, array( $this->tournaments, 'render' ) );
 
+		add_submenu_page( self::SLUG, __( 'Temporades', 'padelcamps' ), __( 'Temporades', 'padelcamps' ), $cap, SeasonsPage::SLUG, array( $this->seasons, 'render' ) );
+
 		add_submenu_page( self::SLUG, __( 'Inscripcions', 'padelcamps' ), __( 'Inscripcions', 'padelcamps' ), $cap, RegistrationsView::GLOBAL_SLUG, array( $this->registrations, 'render_global' ) );
 
+		add_submenu_page( self::SLUG, __( 'Jugadors', 'padelcamps' ), __( 'Jugadors', 'padelcamps' ), $cap, PlayersPage::SLUG, array( $this->players, 'render' ) );
+
 		$placeholders = array(
-			'padelcamps-players'  => __( 'Jugadors', 'padelcamps' ),
 			'padelcamps-clubs'    => __( 'Clubs', 'padelcamps' ),
 			'padelcamps-settings' => __( 'Ajustaments', 'padelcamps' ),
 		);

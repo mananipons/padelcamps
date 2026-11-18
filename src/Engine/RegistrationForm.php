@@ -18,7 +18,8 @@ use DateTimeZone;
 final class RegistrationForm {
 
 	public const STATES       = array( 'off', 'optional', 'required' );
-	public const CONFIGURABLE = array( 'phone1', 'phone2', 'email2', 'club', 'dni', 'notes' );
+	// The DNI/NIE is not configurable: it is the identity of a player, always required.
+	public const CONFIGURABLE = array( 'phone1', 'phone2', 'email2', 'club', 'notes' );
 	public const CONSENTS     = array( 'data', 'health', 'image' );
 	public const MODES        = array( 'yesno', 'from' );
 	public const PACK_TYPES   = array( 'select', 'text' );
@@ -39,7 +40,7 @@ final class RegistrationForm {
 				'phone2' => 'optional',
 				'email2' => 'required',
 				'club'   => 'off',
-				'dni'    => 'off',
+				'dni'    => 'required', // fixed, see CONFIGURABLE.
 				'notes'  => 'optional',
 			),
 			// Free-form welcome pack, written by the organizer for each tournament.
@@ -114,9 +115,9 @@ final class RegistrationForm {
 		return $value;
 	}
 
+	/** Normalized DNI/NIE with a valid control letter, or null (see Engine\Dni). */
 	public static function clean_dni( $value ): ?string {
-		$value = is_string( $value ) ? strtoupper( str_replace( array( ' ', '-' ), '', trim( $value ) ) ) : '';
-		return preg_match( '/^[A-Z0-9]{5,12}$/', $value ) ? $value : null;
+		return Dni::clean( $value );
 	}
 
 	private static function valid_date( $value ): bool {
@@ -326,7 +327,7 @@ final class RegistrationForm {
 	/**
 	 * @param int[] $category_ids Categories of this tournament that accept registrations.
 	 * @return array{errors: array<string,string>, clean: array}
-	 *   errors: field name => code (required|invalid_email|invalid_phone|invalid_dni|invalid_choice|invalid|same_email)
+	 *   errors: field name => code (required|invalid_email|invalid_phone|invalid_dni|invalid_choice|invalid|same_email|same_dni)
 	 */
 	public static function validate( array $cfg, array $category_ids, array $post ): array {
 		$errors = array();
@@ -401,6 +402,9 @@ final class RegistrationForm {
 
 		if ( '' !== $clean['players'][0]['email'] && $clean['players'][0]['email'] === $clean['players'][1]['email'] ) {
 			$errors['p2_email'] = 'same_email';
+		}
+		if ( '' !== $clean['players'][0]['dni'] && $clean['players'][0]['dni'] === $clean['players'][1]['dni'] ) {
+			$errors['p2_dni'] = 'same_dni';
 		}
 
 		if ( 'off' !== $f['notes'] ) {

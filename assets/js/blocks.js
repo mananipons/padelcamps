@@ -77,6 +77,56 @@
 		};
 	}
 
+	// Season ranking: the season (empty = the current one) and optionally a fixed category.
+	function editRanking( props ) {
+		var a = props.attributes;
+		var set = props.setAttributes;
+		var seasons = data.seasons || [];
+		var season = null;
+		for ( var i = 0; i < seasons.length; i++ ) {
+			if ( seasons[ i ].id === a.season ) {
+				season = seasons[ i ];
+			}
+		}
+		var controls = [
+			el( SelectControl, {
+				key: 'season',
+				label: L.season,
+				value: a.season || 0,
+				options: [ { label: L.currentSeason, value: 0 } ].concat(
+					seasons.map( function ( s ) {
+						return { label: s.name, value: s.id };
+					} )
+				),
+				onChange: function ( v ) {
+					set( { season: parseInt( v, 10 ) || 0, category: 0 } );
+				},
+			} ),
+		];
+		if ( season && season.categories.length > 1 ) {
+			controls.push(
+				el( SelectControl, {
+					key: 'category',
+					label: L.rankingCat,
+					value: a.category || 0,
+					options: [ { label: L.chooseInPage, value: 0 } ].concat(
+						season.categories.map( function ( c ) {
+							return { label: c.name, value: c.id };
+						} )
+					),
+					onChange: function ( v ) {
+						set( { category: parseInt( v, 10 ) || 0 } );
+					},
+				} )
+			);
+		}
+		return [
+			el( InspectorControls, { key: 'inspector' }, el( PanelBody, { title: L.settings }, controls ) ),
+			el( ServerSideRender, { key: 'preview', block: 'padelcamps/ranking', attributes: a } ),
+		];
+	}
+
+	wp.blocks.registerBlockType( 'padelcamps/ranking', { edit: editRanking, save: function () { return null; } } );
 	wp.blocks.registerBlockType( 'padelcamps/draw', { edit: edit( 'padelcamps/draw', { category: true, live: true } ), save: function () { return null; } } );
 	wp.blocks.registerBlockType( 'padelcamps/schedule', { edit: edit( 'padelcamps/schedule', { category: true, live: true } ), save: function () { return null; } } );
 	wp.blocks.registerBlockType( 'padelcamps/registration', { edit: edit( 'padelcamps/registration', {} ), save: function () { return null; } } );

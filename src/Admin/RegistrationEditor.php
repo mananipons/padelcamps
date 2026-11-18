@@ -68,7 +68,8 @@ final class RegistrationEditor {
 			foreach ( $this->tournaments->categories( (int) $t['id'] ) as $c ) {
 				$label = $tid > 0 ? $c['name'] : $t['name'] . ' — ' . $c['name'];
 				if ( (float) $c['price'] > 0 ) {
-					$label .= ' (' . number_format_i18n( (float) $c['price'], 2 ) . ' €)';
+					/* translators: %s: price per player */
+				$label .= ' (' . sprintf( __( '%s per jugador', 'padelcamps' ), number_format_i18n( (float) $c['price'], 2 ) . ' €' ) . ')';
 				}
 				$out[ (int) $c['id'] ] = $label;
 			}
@@ -84,6 +85,7 @@ final class RegistrationEditor {
 	private static function players_table( array $values, array $errors ): void {
 		$fields = array(
 			'name'  => array( __( 'Nom i cognoms', 'padelcamps' ), 'text', 120 ),
+			'dni'   => array( __( 'DNI o NIE', 'padelcamps' ), 'text', 14 ),
 			'email' => array( __( 'Correu electrònic', 'padelcamps' ), 'email', 190 ),
 			'phone' => array( __( 'Telèfon', 'padelcamps' ), 'tel', 20 ),
 			'club'  => array( __( 'Club', 'padelcamps' ), 'text', 120 ),
@@ -94,7 +96,7 @@ final class RegistrationEditor {
 		}
 		echo '</tr></thead><tbody>';
 		foreach ( $fields as $key => $def ) {
-			echo '<tr><th scope="row">' . esc_html( $def[0] ) . ( 'name' === $key ? ' *' : '' ) . '</th>';
+			echo '<tr><th scope="row">' . esc_html( $def[0] ) . ( in_array( $key, array( 'name', 'dni' ), true ) ? ' *' : '' ) . '</th>';
 			foreach ( array( 1, 2 ) as $n ) {
 				$name = "p{$n}_{$key}";
 				printf(
@@ -104,7 +106,7 @@ final class RegistrationEditor {
 					esc_attr( (string) ( $values[ $name ] ?? '' ) ),
 					(int) $def[2],
 					esc_attr( sprintf( __( 'Jugador/a %d', 'padelcamps' ), $n ) . ' · ' . $def[0] ),
-					'name' === $key ? ' required' : '',
+					in_array( $key, array( 'name', 'dni' ), true ) ? ' required' : '',
 					self::field_error( $errors, $name ) // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in field_error().
 				);
 			}
@@ -159,11 +161,13 @@ final class RegistrationEditor {
 		}
 		echo '</select><p class="description">' . esc_html__( 'Si la categoria ja és plena, t’avisarem, però la inscripció es desa igualment.', 'padelcamps' ) . '</p></td></tr>';
 
-		echo '<tr><th scope="row"><label for="pc-n-pay">' . esc_html__( 'Pagament', 'padelcamps' ) . '</label></th><td><select id="pc-n-pay" name="payment">';
-		foreach ( ManualRegistration::PAYMENTS as $p ) {
-			printf( '<option value="%s"%s>%s</option>', esc_attr( $p ), selected( $v['payment'] ?? 'pending', $p, false ), esc_html( RegistrationsView::payment_label( $p ) ) );
+		// Each player pays their own fee.
+		echo '<tr><th scope="row">' . esc_html__( 'Pagament', 'padelcamps' ) . '</th><td><fieldset>';
+		foreach ( array( 1, 2 ) as $n ) {
+			/* translators: %d: player number */
+			printf( '<label style="margin-right:16px"><input type="checkbox" name="p%1$d_paid" value="1"%2$s> %3$s</label>', $n, checked( ! empty( $v[ "p{$n}_paid" ] ), true, false ), esc_html( sprintf( __( 'El jugador/a %d ja ha pagat', 'padelcamps' ), $n ) ) );
 		}
-		echo '</select><p class="description">' . esc_html__( 'Només compta si la categoria té preu.', 'padelcamps' ) . '</p></td></tr>';
+		echo '</fieldset><p class="description">' . esc_html__( 'El preu de la categoria és per jugador: cadascú paga el seu. Només compta si la categoria té preu.', 'padelcamps' ) . '</p></td></tr>';
 
 		echo '<tr><th scope="row"><label for="pc-n-lang">' . esc_html__( 'Idioma dels correus', 'padelcamps' ) . '</label></th><td><select id="pc-n-lang" name="lang">';
 		foreach ( $langs as $code => $native ) {
@@ -189,7 +193,7 @@ final class RegistrationEditor {
 		if ( ! $values ) {
 			foreach ( $r['players'] as $i => $p ) {
 				$n = $i + 1;
-				foreach ( array( 'name', 'email', 'phone', 'club' ) as $k ) {
+				foreach ( array( 'name', 'dni', 'email', 'phone', 'club' ) as $k ) {
 					$values[ "p{$n}_{$k}" ] = (string) ( $p[ $k ] ?? '' );
 				}
 			}
@@ -239,13 +243,13 @@ final class RegistrationEditor {
 		$back  = RegistrationsView::url( $tid, array( 'reg' => 'new' ) );
 
 		$result = ManualRegistration::validate( $input, array_keys( $this->category_options( $tid ) ), array_keys( Translator::languages() ) );
-		$keep   = array_intersect_key( $input, array_flip( array( 'category_id', 'status', 'payment', 'lang', 'rating', 'notes', 'notify', 'p1_name', 'p1_email', 'p1_phone', 'p1_club', 'p2_name', 'p2_email', 'p2_phone', 'p2_club' ) ) );
+		$keep   = array_intersect_key( $input, array_flip( array( 'category_id', 'status', 'payment', 'p1_paid', 'p2_paid', 'lang', 'rating', 'notes', 'notify', 'p1_name', 'p1_dni', 'p1_email', 'p1_phone', 'p1_club', 'p2_name', 'p2_dni', 'p2_email', 'p2_phone', 'p2_club' ) ) );
 		if ( $result['errors'] ) {
 			self::fail( $back, $result['errors'], $keep );
 		}
 		$clean = $result['clean'];
 		foreach ( $clean['players'] as $p ) {
-			if ( $this->regs->has_active_registration( $clean['category_id'], $p['email'] ) ) {
+			if ( $this->regs->has_active_registration( $clean['category_id'], $p['dni'], $p['email'] ) ) {
 				self::fail( $back, array( '_form' => 'duplicate' ), $keep );
 			}
 		}
@@ -259,7 +263,8 @@ final class RegistrationEditor {
 				'consents'       => array(),
 				'locale'         => $clean['lang'],
 				'status'         => $clean['status'],
-				'payment_status' => $clean['payment'],
+				'payment_status'  => $clean['payment'],
+				'player_payments' => $clean['player_payments'],
 				'rating'         => $clean['rating'],
 				'org_notes'      => $clean['notes'],
 				'source'         => 'admin',
@@ -298,10 +303,14 @@ final class RegistrationEditor {
 		}
 		$back   = RegistrationsView::url( $tid, array( 'reg' => $id ) );
 		$result = ManualRegistration::players( $input );
+		$keep   = array_intersect_key( $input, array_flip( array( 'p1_name', 'p1_dni', 'p1_email', 'p1_phone', 'p1_club', 'p2_name', 'p2_dni', 'p2_email', 'p2_phone', 'p2_club' ) ) );
 		if ( $result['errors'] ) {
-			self::fail( $back, $result['errors'], array_intersect_key( $input, array_flip( array( 'p1_name', 'p1_email', 'p1_phone', 'p1_club', 'p2_name', 'p2_email', 'p2_phone', 'p2_club' ) ) ), 'players' );
+			self::fail( $back, $result['errors'], $keep, 'players' );
 		}
-		$this->regs->update_players( $id, $result['players'] );
+		$taken = $this->regs->update_players( $id, $result['players'] );
+		if ( $taken ) {
+			self::fail( $back, $taken, $keep, 'players' );
+		}
 		wp_safe_redirect( RegistrationsView::url( $tid, array( 'reg' => $id, 'rmsg' => 'players_saved' ) ) );
 		exit;
 	}

@@ -73,7 +73,10 @@ final class RegistrationMailer {
 		// Nobody on the waiting list should pay before getting a place.
 		if ( $reg['amount'] > 0 && 'waitlist' !== $reg['status'] ) {
 			$lines[] = '';
-			$lines[] = sprintf( __( 'Import de la inscripció: %s', 'padelcamps' ), self::money( (float) $reg['amount'] ) );
+			// Each player pays their own fee.
+			$per     = (float) ( $reg['price'] ?? 0 ) > 0 ? (float) $reg['price'] : (float) $reg['amount'];
+			/* translators: 1: amount per player, 2: amount for the pair */
+			$lines[] = sprintf( __( 'Import: %1$s per jugador (%2$s la parella).', 'padelcamps' ), self::money( $per ), self::money( (float) $reg['amount'] ) );
 			if ( '' !== $config['payment_instructions'] ) {
 				$lines[] = __( 'Instruccions de pagament:', 'padelcamps' );
 				$lines[] = $config['payment_instructions'];

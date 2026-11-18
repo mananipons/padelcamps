@@ -97,39 +97,49 @@ final class TournamentRepository {
 		return $slug;
 	}
 
-	/** @param array{name:string, starts_on:?string, ends_on:?string, venue:string, description:string} $data */
+	/**
+	 * `season_id` and `counts_for_ranking` are optional; a tournament without a season
+	 * never counts for a ranking.
+	 *
+	 * @param array{name:string, starts_on:?string, ends_on:?string, venue:string, description:string, season_id?:?int, counts_for_ranking?:bool} $data
+	 */
 	public function create( array $data ): int {
 		global $wpdb;
+		$season_id = ! empty( $data['season_id'] ) ? (int) $data['season_id'] : null;
 		$wpdb->insert(
 			self::t( 'tournaments' ),
 			array(
-				'name'        => $data['name'],
-				'slug'        => $this->unique_slug( $data['name'] ),
-				'status'      => 'draft',
-				'starts_on'   => $data['starts_on'],
-				'ends_on'     => $data['ends_on'],
-				'venue'       => $data['venue'],
-				'description' => $data['description'],
-				'created_at'  => current_time( 'mysql' ),
+				'name'               => $data['name'],
+				'slug'               => $this->unique_slug( $data['name'] ),
+				'status'             => 'draft',
+				'starts_on'          => $data['starts_on'],
+				'ends_on'            => $data['ends_on'],
+				'venue'              => $data['venue'],
+				'description'        => $data['description'],
+				'season_id'          => $season_id,
+				'counts_for_ranking' => $season_id && ! empty( $data['counts_for_ranking'] ) ? 1 : 0,
+				'created_at'         => current_time( 'mysql' ),
 			)
 		);
 		return (int) $wpdb->insert_id;
 	}
 
-	/** Slug is kept on update so public URLs do not break. */
+	/** Slug is kept on update so public URLs do not break. Season fields are only touched when given. */
 	public function update( int $id, array $data ): void {
 		global $wpdb;
-		$wpdb->update(
-			self::t( 'tournaments' ),
-			array(
-				'name'        => $data['name'],
-				'starts_on'   => $data['starts_on'],
-				'ends_on'     => $data['ends_on'],
-				'venue'       => $data['venue'],
-				'description' => $data['description'],
-			),
-			array( 'id' => $id )
+		$row = array(
+			'name'        => $data['name'],
+			'starts_on'   => $data['starts_on'],
+			'ends_on'     => $data['ends_on'],
+			'venue'       => $data['venue'],
+			'description' => $data['description'],
 		);
+		if ( array_key_exists( 'season_id', $data ) ) {
+			$season_id                 = ! empty( $data['season_id'] ) ? (int) $data['season_id'] : null;
+			$row['season_id']          = $season_id;
+			$row['counts_for_ranking'] = $season_id && ! empty( $data['counts_for_ranking'] ) ? 1 : 0;
+		}
+		$wpdb->update( self::t( 'tournaments' ), $row, array( 'id' => $id ) );
 	}
 
 	public function set_status( int $id, string $status ): void {
@@ -194,6 +204,7 @@ final class TournamentRepository {
 		$wpdb->query( 'DELETE FROM ' . self::t( 'phases' ) . " WHERE category_id IN ({$cat})" );
 		$wpdb->query( "DELETE FROM {$rp} WHERE registration_id IN ({$reg})" );
 		$wpdb->query( "DELETE FROM {$r} WHERE category_id IN ({$cat})" );
+		( new RankingRepository() )->delete_tournament_points( $id );
 		$wpdb->delete( $c, array( 'tournament_id' => $id ) );
 		$wpdb->delete( self::t( 'courts' ), array( 'tournament_id' => $id ) );
 		$wpdb->delete( self::t( 'tournaments' ), array( 'id' => $id ) );
@@ -201,6 +212,8 @@ final class TournamentRepository {
 		if ( $player_ids ) {
 			$list = implode( ',', $player_ids );
 			$wpdb->query( "DELETE pl FROM {$p} pl LEFT JOIN {$rp} x ON x.player_id = pl.id WHERE pl.id IN ({$list}) AND x.id IS NULL" );
+			// Erased players take their ranking points (and adjustments) with them.
+			( new RankingRepository() )->delete_orphans();
 		}
 		$wpdb->query( 'COMMIT' );
 	}
@@ -232,11 +245,12 @@ final class TournamentRepository {
 		global $wpdb;
 		$c   = self::t( 'categories' );
 		$row = array(
-			'name'              => $data['name'],
-			'format'            => $data['format'],
-			'registration_mode' => $data['registration_mode'],
-			'max_teams'         => $data['max_teams'],
-			'price'             => $data['price'],
+			'name'                => $data['name'],
+			'format'              => $data['format'],
+			'registration_mode'   => $data['registration_mode'],
+			'ranking_category_id' => ! empty( $data['ranking_category_id'] ) ? (int) $data['ranking_category_id'] : null,
+			'max_teams'           => $data['max_teams'],
+			'price'               => $data['price'],
 		);
 
 		if ( ! empty( $data['id'] ) ) {
@@ -280,6 +294,7 @@ final class TournamentRepository {
 		$wpdb->delete( self::t( 'matches' ), array( 'category_id' => $id ) );
 		$wpdb->delete( self::t( 'draw_log' ), array( 'category_id' => $id ) );
 		$wpdb->delete( self::t( 'phases' ), array( 'category_id' => $id ) );
+		( new RankingRepository() )->delete_category_points( $id );
 		$wpdb->delete( self::t( 'categories' ), array( 'id' => $id ) );
 	}
 

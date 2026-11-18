@@ -31,6 +31,7 @@ final class Plugin {
 		( new Frontend\RegistrationShortcode() )->register();
 		( new Frontend\DrawShortcode() )->register();
 		( new Frontend\ScheduleShortcode() )->register();
+		( new Frontend\RankingShortcode() )->register();
 		( new Frontend\TvPage() )->register();
 		( new Frontend\Blocks() )->register();
 		( new Frontend\PairPage() )->register();
@@ -39,9 +40,14 @@ final class Plugin {
 			$tournament_repo = new Db\TournamentRepository();
 			$registrations   = new Admin\RegistrationsView( new Db\RegistrationRepository(), $tournament_repo );
 			$registrations->register();
-			$tournaments = new Admin\TournamentsPage( $tournament_repo, $registrations );
+			$season_repo = new Db\SeasonRepository();
+			$tournaments = new Admin\TournamentsPage( $tournament_repo, $registrations, $season_repo );
 			$tournaments->register();
-			( new Admin\Menu( $tournaments, $registrations ) )->register();
+			$seasons = new Admin\SeasonsPage( $season_repo );
+			$seasons->register();
+			$players = new Admin\PlayersPage( new Db\PlayerRepository(), $season_repo, new Db\RankingRepository() );
+			$players->register();
+			( new Admin\Menu( $tournaments, $registrations, $seasons, $players ) )->register();
 			( new Admin\Translations() )->register();
 		}
 	}

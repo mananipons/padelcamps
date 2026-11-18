@@ -46,7 +46,9 @@ final class DrawService {
 		if ( $this->draws->has_results( $cid ) ) {
 			return 'has_results';
 		}
-		$entrants = $this->draws->confirmed_entrants( $cid );
+		// With a season ranking, the pairs are ordered by their season points (other tournaments)
+		// and the manual rating only breaks ties; otherwise by the manual rating alone.
+		$entrants = ( new SeedingService( $this->draws ) )->entrants( $category );
 		if ( count( $entrants ) < 2 ) {
 			return 'not_enough';
 		}
@@ -81,7 +83,14 @@ final class DrawService {
 			$seed,
 			array(
 				'action'     => 'draw',
-				'entrants'   => array_map( static fn( $e ) => array( (int) $e['id'], null === $e['rating'] ? null : (float) $e['rating'] ), $entrants ),
+				// [registration id, manual rating, season points used (null = no season ranking)]
+				'entrants'   => array_map(
+					static function ( $e ) {
+						$manual = array_key_exists( 'manual_rating', $e ) ? $e['manual_rating'] : ( null === $e['rating'] ? null : (float) $e['rating'] );
+						return array( (int) $e['id'], $manual, $e['season_points'] ?? null );
+					},
+					$entrants
+				),
 				'group_size' => $group_size,
 				'format'     => $category['format'],
 			),

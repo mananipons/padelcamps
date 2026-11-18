@@ -37,7 +37,6 @@ final class FormTab {
 			'phone2' => __( 'Telèfon del jugador 2', 'padelcamps' ),
 			'email2' => __( 'Correu del jugador 2', 'padelcamps' ),
 			'club'   => __( 'Club', 'padelcamps' ),
-			'dni'    => __( 'DNI o NIE', 'padelcamps' ),
 			'notes'  => __( 'Observacions', 'padelcamps' ),
 		);
 	}
@@ -50,8 +49,28 @@ final class FormTab {
 		);
 	}
 
+	/** @return array<string, string> sub-page key => label (existing strings). */
+	private static function subs(): array {
+		return array(
+			'texts'        => __( 'Textos', 'padelcamps' ),
+			'window'       => __( 'Obertura i avisos', 'padelcamps' ),
+			'fields'       => __( 'Camps del formulari', 'padelcamps' ),
+			'pack'         => __( 'Welcome pack', 'padelcamps' ),
+			'availability' => __( 'Disponibilitat', 'padelcamps' ),
+			'consents'     => __( 'Consentiments', 'padelcamps' ),
+		);
+	}
+
+	private function pane_open( string $key, string $current ): void {
+		echo '<div class="pc-pane" data-pane="' . esc_attr( $key ) . '"' . ( $key === $current ? '' : ' hidden' ) . '>';
+	}
+
 	public function render( array $t ): void {
 		$tid    = (int) $t['id'];
+		$subs   = self::subs();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only, whitelisted.
+		$sub    = isset( $_GET['sub'] ) ? sanitize_key( wp_unslash( $_GET['sub'] ) ) : '';
+		$sub    = isset( $subs[ $sub ] ) ? $sub : 'texts';
 		$config = $this->repo->form_config( $t );
 		$regs   = $this->repo->registrations_count( $tid );
 
@@ -62,20 +81,72 @@ final class FormTab {
 		/* translators: %d: number of registrations */
 		echo '<p>' . esc_html( sprintf( __( 'Inscripcions rebudes fins ara: %d', 'padelcamps' ), $regs ) ) . '</p>';
 
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		// One form for every sub-page: panes are only shown/hidden, so nothing typed is lost when switching.
+		$items = array();
+		foreach ( $subs as $key => $label ) {
+			$items[] = array(
+				'label'   => $label,
+				'url'     => TournamentsPage::url( array( 'action' => 'edit', 'id' => $tid, 'tab' => 'form', 'sub' => $key ) ),
+				'current' => $key === $sub,
+				'key'     => $key,
+			);
+		}
+		SubNav::render( $items, __( 'Formulari', 'padelcamps' ) );
+
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="pc-form-config">';
 		echo '<input type="hidden" name="action" value="padelcamps_save_form">';
+		echo '<input type="hidden" name="sub" id="pc-form-sub" value="' . esc_attr( $sub ) . '">';
 		echo '<input type="hidden" name="id" value="' . esc_attr( (string) $tid ) . '">';
 		wp_nonce_field( 'padelcamps_save_form' );
 
-		$this->section_texts( $config );
-		$this->section_window( $config );
-		$this->section_fields( $config );
-		$this->section_pack( $config );
-		$this->section_availability( $t, $config );
-		$this->section_consents( $config );
+		$panes = array(
+			'texts'        => fn() => $this->section_texts( $config ),
+			'window'       => fn() => $this->section_window( $config ),
+			'fields'       => fn() => $this->section_fields( $config ),
+			'pack'         => fn() => $this->section_pack( $config ),
+			'availability' => fn() => $this->section_availability( $t, $config ),
+			'consents'     => fn() => $this->section_consents( $config ),
+		);
+		foreach ( $panes as $key => $draw ) {
+			$this->pane_open( $key, $sub );
+			$draw();
+			echo '</div>';
+		}
 
 		echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Desa el formulari', 'padelcamps' ) . '</button></p>';
 		echo '</form>';
+		$this->panes_script();
+	}
+
+	/** Switch sub-pages without reloading (keeps unsaved edits) and remember the current one in the URL. */
+	private function panes_script(): void {
+		?>
+<script>
+(function () {
+	var form = document.getElementById('pc-form-config');
+	var links = document.querySelectorAll('.pc-subnav__item[data-sub]');
+	if (!form || !links.length) { return; }
+	var hidden = document.getElementById('pc-form-sub');
+	function show(key) {
+		form.querySelectorAll('.pc-pane').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== key; });
+		links.forEach(function (a) {
+			var on = a.getAttribute('data-sub') === key;
+			a.classList.toggle('is-current', on);
+			if (on) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); }
+		});
+		if (hidden) { hidden.value = key; }
+	}
+	links.forEach(function (a) {
+		a.addEventListener('click', function (e) {
+			e.preventDefault();
+			var key = a.getAttribute('data-sub');
+			show(key);
+			if (window.history && history.replaceState) { history.replaceState(null, '', a.href); }
+		});
+	});
+})();
+</script>
+		<?php
 	}
 
 	private function textarea_row( string $name, string $label, string $value, string $help = '', int $rows = 3 ): void {
@@ -108,7 +179,21 @@ final class FormTab {
 
 	private function section_fields( array $c ): void {
 		echo '<h3>' . esc_html__( 'Camps del formulari', 'padelcamps' ) . '</h3>';
-		echo '<p class="description">' . esc_html__( 'Sempre es demanen: categoria, nom i correu del jugador 1, i nom del jugador 2.', 'padelcamps' ) . '</p>';
+		echo '<h4>' . esc_html__( 'Camps sempre obligatoris', 'padelcamps' ) . '</h4>';
+		echo '<p class="description">' . esc_html__( 'No es poden canviar: el DNI o NIE és la identitat del jugador a tots els tornejos i al rànquing.', 'padelcamps' ) . '</p>';
+		echo '<table class="widefat striped pc-narrow pc-fixed-fields"><tbody>';
+		$fixed = array(
+			__( 'Categoria', 'padelcamps' ),
+			__( 'Nom del jugador 1', 'padelcamps' ),
+			__( 'Correu del jugador 1', 'padelcamps' ),
+			__( 'Nom del jugador 2', 'padelcamps' ),
+			__( 'DNI o NIE dels dos jugadors', 'padelcamps' ),
+		);
+		foreach ( $fixed as $label ) {
+			echo '<tr><td>' . esc_html( $label ) . '</td><td><span class="pc-badge pc-badge--muted"><span class="dashicons dashicons-lock" aria-hidden="true"></span> ' . esc_html__( 'Obligatori', 'padelcamps' ) . '</span></td></tr>';
+		}
+		echo '</tbody></table>';
+		echo '<h4>' . esc_html__( 'Camps configurables', 'padelcamps' ) . '</h4>';
 		echo '<table class="form-table" role="presentation">';
 		foreach ( self::field_labels() as $key => $label ) {
 			echo '<tr><th scope="row"><label for="pc-f-field-' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th><td>';
@@ -326,7 +411,12 @@ final class FormTab {
 
 		$this->repo->save_form_config( $id, RegistrationForm::normalize( $raw ) );
 
-		wp_safe_redirect( TournamentsPage::url( array( 'action' => 'edit', 'id' => $id, 'tab' => 'form', 'msg' => 'form_saved' ) ) );
+		$sub  = isset( $_POST['sub'] ) ? sanitize_key( wp_unslash( $_POST['sub'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified above.
+		$args = array( 'action' => 'edit', 'id' => $id, 'tab' => 'form', 'msg' => 'form_saved' );
+		if ( isset( self::subs()[ $sub ] ) ) {
+			$args['sub'] = $sub;
+		}
+		wp_safe_redirect( TournamentsPage::url( $args ) );
 		exit;
 	}
 }

@@ -13,17 +13,29 @@ final class CommsRepository {
 		return Schema::table( $name );
 	}
 
-	/** @param int[] $ids @return array<int, array{status:string, payment_status:string}> */
+	/**
+	 * Status and payment of registrations before a change, to know what changed after it.
+	 *
+	 * @param int[] $ids
+	 * @return array<int, array{status:string, payment_status:string, players:array<int,string>}> players: position => payment
+	 */
 	public function states( array $ids ): array {
 		global $wpdb;
 		$ids = array_values( array_filter( array_map( 'intval', $ids ) ) );
 		if ( ! $ids ) {
 			return array();
 		}
-		$rows = $wpdb->get_results( 'SELECT id, status, payment_status FROM ' . self::t( 'registrations' ) . ' WHERE id IN (' . implode( ',', $ids ) . ')', ARRAY_A ) ?: array();
+		$list = implode( ',', $ids );
+		$rows = $wpdb->get_results( 'SELECT id, status, payment_status FROM ' . self::t( 'registrations' ) . " WHERE id IN ({$list})", ARRAY_A ) ?: array();
 		$out  = array();
 		foreach ( $rows as $row ) {
-			$out[ (int) $row['id'] ] = array( 'status' => $row['status'], 'payment_status' => $row['payment_status'] );
+			$out[ (int) $row['id'] ] = array( 'status' => $row['status'], 'payment_status' => $row['payment_status'], 'players' => array() );
+		}
+		$players = $wpdb->get_results( 'SELECT registration_id, position, payment_status FROM ' . self::t( 'registration_players' ) . " WHERE registration_id IN ({$list})", ARRAY_A ) ?: array();
+		foreach ( $players as $p ) {
+			if ( isset( $out[ (int) $p['registration_id'] ] ) ) {
+				$out[ (int) $p['registration_id'] ]['players'][ (int) $p['position'] ] = $p['payment_status'];
+			}
 		}
 		return $out;
 	}

@@ -4,8 +4,8 @@ namespace PadelCamps\Engine;
 /**
  * Validation of registrations entered by the organizer from the admin
  * (phone, WhatsApp, at the club) and of edits to a pair's player data.
- * Looser than the public form: only the two names are required, there are
- * no consents or welcome pack, and the organizer chooses status and payment.
+ * Looser than the public form: only the two names and DNI/NIE are required, there
+ * are no consents or welcome pack, and the organizer chooses status and payment.
  * Pure PHP, no WordPress.
  */
 final class ManualRegistration {
@@ -14,7 +14,8 @@ final class ManualRegistration {
 	public const PAYMENTS = array( 'pending', 'paid' );
 
 	/**
-	 * Players p1_* / p2_*: name (required), email, phone, club (optional).
+	 * Players p1_* / p2_*: name and DNI/NIE (required: the DNI is the identity of the
+	 * player), email, phone, club (optional). The two DNI must differ.
 	 *
 	 * @return array{errors: array<string,string>, players: array<int, array{name:string, email:string, phone:string, club:string, dni:string, pack:array}>}
 	 */
@@ -27,8 +28,15 @@ final class ManualRegistration {
 			$email     = RegistrationForm::clean_email( $raw_email );
 			$raw_phone = is_string( $input[ "p{$n}_phone" ] ?? null ) ? trim( $input[ "p{$n}_phone" ] ) : '';
 			$phone     = RegistrationForm::clean_phone( $raw_phone );
+			$raw_dni = is_string( $input[ "p{$n}_dni" ] ?? null ) ? trim( $input[ "p{$n}_dni" ] ) : '';
+			$dni     = RegistrationForm::clean_dni( $raw_dni );
 			if ( '' === $name ) {
 				$errors[ "p{$n}_name" ] = 'required';
+			}
+			if ( '' === $raw_dni ) {
+				$errors[ "p{$n}_dni" ] = 'required';
+			} elseif ( null === $dni ) {
+				$errors[ "p{$n}_dni" ] = 'invalid_dni';
 			}
 			if ( '' !== $raw_email && null === $email ) {
 				$errors[ "p{$n}_email" ] = 'invalid_email';
@@ -41,12 +49,15 @@ final class ManualRegistration {
 				'email' => $email ?? '',
 				'phone' => $phone ?? '',
 				'club'  => RegistrationForm::clean_text( $input[ "p{$n}_club" ] ?? '', 120 ),
-				'dni'   => '',
+				'dni'   => $dni ?? '',
 				'pack'  => array(),
 			);
 		}
 		if ( '' !== $players[0]['email'] && $players[0]['email'] === $players[1]['email'] ) {
 			$errors['p2_email'] = 'same_email';
+		}
+		if ( '' !== $players[0]['dni'] && $players[0]['dni'] === $players[1]['dni'] ) {
+			$errors['p2_dni'] = 'same_dni';
 		}
 		return array( 'errors' => $errors, 'players' => $players );
 	}
@@ -68,6 +79,11 @@ final class ManualRegistration {
 		$status  = in_array( $input['status'] ?? '', self::STATUSES, true ) ? $input['status'] : 'confirmed';
 		$payment = in_array( $input['payment'] ?? '', self::PAYMENTS, true ) ? $input['payment'] : 'pending';
 		$lang    = in_array( $input['lang'] ?? '', $langs, true ) ? $input['lang'] : ( $langs[0] ?? '' );
+		// Each player pays their own fee: p1_paid / p2_paid ("already paid"), or payment=paid for both.
+		$player_payments = array();
+		foreach ( array_keys( $p['players'] ) as $i ) {
+			$player_payments[ $i ] = ( '1' === (string) ( $input[ 'p' . ( $i + 1 ) . '_paid' ] ?? '' ) || 'paid' === $payment ) ? 'paid' : 'pending';
+		}
 
 		$rating_raw = trim( str_replace( ',', '.', (string) ( $input['rating'] ?? '' ) ) );
 		$rating     = null;
@@ -85,8 +101,9 @@ final class ManualRegistration {
 				'category_id' => $category,
 				'players'     => $p['players'],
 				'status'      => $status,
-				'payment'     => $payment,
-				'lang'        => $lang,
+				'payment'         => $payment,
+				'player_payments' => $player_payments,
+				'lang'            => $lang,
 				'rating'      => $rating,
 				'notes'       => RegistrationForm::clean_multiline( $input['notes'] ?? '', 2000 ),
 			),

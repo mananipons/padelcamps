@@ -204,17 +204,45 @@ final class Communication {
 	public function after_payment( array $before ): int {
 		$sent = 0;
 		foreach ( $before as $id => $old ) {
-			if ( 'paid' === $old['payment_status'] ) {
-				continue;
-			}
 			$reg = $this->regs->find( (int) $id );
 			$t   = $reg ? $this->tournament( (int) $reg['tournament_id'] ) : null;
-			if ( ! $reg || ! $t || 'paid' !== $reg['payment_status'] || ! CommsSettings::enabled( $this->settings( $t ), 'paid' ) ) {
+			if ( ! $reg || ! $t || ! CommsSettings::enabled( $this->settings( $t ), 'paid' ) ) {
 				continue;
 			}
-			$sent += $this->deliver( $t, $reg, 'reg_paid', fn() => $this->compose_status( $t, $reg, 'paid' ) )['sent'];
+			// Each player pays their own fee: tell the pair who has just paid.
+			$new = array();
+			foreach ( $reg['players'] as $p ) {
+				$was = $old['players'][ (int) $p['position'] ] ?? '';
+				if ( 'paid' === $p['pay_status'] && 'paid' !== $was ) {
+					$new[] = $p;
+				}
+			}
+			if ( ! $new ) {
+				continue;
+			}
+			$sent += $this->deliver( $t, $reg, 'reg_paid', fn() => $this->compose_paid( $t, $reg, $new ) )['sent'];
 		}
 		return $sent;
+	}
+
+	/** @param array $paid players who have just paid @return array{0:string, 1:string} */
+	private function compose_paid( array $t, array $reg, array $paid ): array {
+		$lines = array( sprintf( __( 'Hola %s,', 'padelcamps' ), self::greeting_names( $reg ) ), '' );
+		foreach ( $paid as $p ) {
+			/* translators: 1: player, 2: amount, 3: tournament */
+			$lines[] = sprintf( __( 'Hem rebut el pagament de %1$s (%2$s) per al torneig «%3$s».', 'padelcamps' ), $p['name'], self::money( (float) $p['pay_amount'] ), $t['name'] );
+		}
+		$still = array_filter( $reg['players'], static fn( $p ) => 'pending' === $p['pay_status'] && (float) $p['pay_amount'] > 0 );
+		$lines[] = '';
+		if ( $still ) {
+			foreach ( $still as $p ) {
+				/* translators: 1: player, 2: amount */
+				$lines[] = sprintf( __( 'Encara falta el pagament de %1$s (%2$s).', 'padelcamps' ), $p['name'], self::money( (float) $p['pay_amount'] ) );
+			}
+		} else {
+			$lines[] = __( 'La inscripció de la parella ja està pagada. Gràcies!', 'padelcamps' );
+		}
+		return array( sprintf( __( 'Pagament rebut: %s', 'padelcamps' ), $t['name'] ), implode( "\n", $lines ) );
 	}
 
 	/** @return array{0:string, 1:string} [subject, body] */
@@ -231,10 +259,15 @@ final class Communication {
 				if ( count( $names ) >= 2 ) {
 					$lines[] = sprintf( __( 'Parella: %1$s i %2$s', 'padelcamps' ), $names[0], $names[1] );
 				}
-				if ( (float) $reg['amount'] > 0 && 'pending' === $reg['payment_status'] ) {
+				// Each player pays their own fee: list who still has to pay.
+				$unpaid = array_filter( $reg['players'] ?? array(), static fn( $p ) => 'pending' === ( $p['pay_status'] ?? '' ) && (float) ( $p['pay_amount'] ?? 0 ) > 0 );
+				if ( $unpaid ) {
 					$lines[] = '';
-					$lines[] = sprintf( __( 'Import de la inscripció: %s', 'padelcamps' ), self::money( (float) $reg['amount'] ) );
-					$howto   = $this->tournaments->form_config( $t )['payment_instructions'];
+					foreach ( $unpaid as $p ) {
+						/* translators: 1: player, 2: amount */
+						$lines[] = sprintf( __( 'Pendent de pagament: %1$s (%2$s)', 'padelcamps' ), $p['name'], self::money( (float) $p['pay_amount'] ) );
+					}
+					$howto = $this->tournaments->form_config( $t )['payment_instructions'];
 					if ( '' !== $howto ) {
 						$lines[] = __( 'Instruccions de pagament:', 'padelcamps' );
 						$lines[] = $howto;
@@ -251,15 +284,10 @@ final class Communication {
 				/* translators: 1: tournament, 2: category */
 				$lines[] = sprintf( __( 'La vostra inscripció al torneig «%1$s», categoria «%2$s», és a la llista d’espera. Us avisarem si queda una plaça lliure.', 'padelcamps' ), $tname, $cname );
 				break;
-			case 'cancelled':
+			default: // cancelled
 				$subject = sprintf( __( 'Inscripció cancel·lada: %s', 'padelcamps' ), $tname );
 				/* translators: 1: tournament, 2: category */
 				$lines[] = sprintf( __( 'La vostra inscripció al torneig «%1$s», categoria «%2$s», s’ha cancel·lat. Si creieu que és un error, responeu aquest correu.', 'padelcamps' ), $tname, $cname );
-				break;
-			default: // paid
-				$subject = sprintf( __( 'Pagament rebut: %s', 'padelcamps' ), $tname );
-				/* translators: 1: tournament, 2: amount */
-				$lines[] = sprintf( __( 'Hem rebut el pagament de la vostra inscripció al torneig «%1$s» (%2$s). Gràcies!', 'padelcamps' ), $tname, self::money( (float) $reg['amount'] ) );
 		}
 		return array( $subject, implode( "\n", $lines ) );
 	}
