@@ -934,3 +934,49 @@
 	line-height: 14px;
 	vertical-align: -2px;
 }
+
+/* ---------- Tables on small screens ---------------------------------------- */
+
+/*
+ * WordPress stacks every cell of a list table on its own line below 783px and detaches
+ * the headers from the data. Keep the real table instead and let it scroll sideways:
+ * display:block on the <table> makes the browser wrap rows in an anonymous table, so
+ * the columns still line up with their headers.
+ */
+@media (max-width: 782px) {
+	.padelcamps-admin .pc-wrap table.wp-list-table,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat {
+		display: block;
+		max-width: 100%;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.padelcamps-admin .pc-wrap table.wp-list-table thead,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat thead {
+		display: table-header-group;
+	}
+
+	.padelcamps-admin .pc-wrap table.wp-list-table tbody,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat tbody {
+		display: table-row-group;
+	}
+
+	.padelcamps-admin .pc-wrap table.wp-list-table tr,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat tr {
+		display: table-row;
+	}
+
+	.padelcamps-admin .pc-wrap table.wp-list-table th,
+	.padelcamps-admin .pc-wrap table.wp-list-table td,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat th,
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat td {
+		display: table-cell !important;
+		white-space: nowrap;
+	}
+
+	/* Long help texts inside a cell keep wrapping. */
+	.padelcamps-admin .pc-wrap .pc-panel table.widefat td .description {
+		white-space: normal;
+	}
+}

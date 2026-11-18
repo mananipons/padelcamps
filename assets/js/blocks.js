@@ -9,6 +9,7 @@
 	}
 	var el = wp.element.createElement;
 	var InspectorControls = wp.blockEditor.InspectorControls;
+	var useBlockProps = wp.blockEditor.useBlockProps;
 	var PanelBody = wp.components.PanelBody;
 	var SelectControl = wp.components.SelectControl;
 	var ToggleControl = wp.components.ToggleControl;
@@ -68,12 +69,12 @@
 					el( ToggleControl, { key: 'find', label: L.find, checked: a.find !== false, onChange: function ( v ) { set( { find: v } ); } } )
 				);
 			}
-			return [
+			return el( 'div', useBlockProps(), [
 				el( InspectorControls, { key: 'inspector' }, el( PanelBody, { title: L.settings }, controls ) ),
 				a.id
 					? el( ServerSideRender, { key: 'preview', block: name, attributes: a } )
 					: el( 'p', { key: 'empty', style: { padding: '1em', border: '1px dashed #ccc' } }, L.choose ),
-			];
+			] );
 		};
 	}
 
@@ -120,10 +121,10 @@
 				} )
 			);
 		}
-		return [
+		return el( 'div', useBlockProps(), [
 			el( InspectorControls, { key: 'inspector' }, el( PanelBody, { title: L.settings }, controls ) ),
 			el( ServerSideRender, { key: 'preview', block: 'padelcamps/ranking', attributes: a } ),
-		];
+		] );
 	}
 
 	wp.blocks.registerBlockType( 'padelcamps/ranking', { edit: editRanking, save: function () { return null; } } );

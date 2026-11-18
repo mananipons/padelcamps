@@ -142,7 +142,7 @@ final class SeasonsPage {
 			echo '<div class="row-actions"><span class="edit"><a href="' . esc_url( $edit ) . '">' . esc_html__( 'Edita', 'padelcamps' ) . '</a></span></div></td>';
 			echo '<td>' . esc_html( $dates ) . '</td>';
 			/* translators: 1: tournaments that count for the ranking, 2: tournaments in the season */
-			echo '<td>' . esc_html( sprintf( __( '%1$d amb punts de %2$d', 'padelcamps' ), (int) $row['ranked_count'], (int) $row['tournaments_count'] ) ) . '</td>';
+			echo '<td>' . esc_html( sprintf( __( '%1$d de %2$d amb punts', 'padelcamps' ), (int) $row['ranked_count'], (int) $row['tournaments_count'] ) ) . '</td>';
 			echo '<td>' . esc_html( (string) (int) $row['categories_count'] ) . '</td>';
 			echo '</tr>';
 		}

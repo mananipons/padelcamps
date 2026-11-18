@@ -5,7 +5,7 @@
 **Plugin de WordPress per organitzar campionats de pàdel**
 Inscripcions · Sortejos · Quadres · Pistes i horaris · Resultats en directe · Avisos per correu
 
-![Versió](https://img.shields.io/badge/versi%C3%B3-0.1.0-blue)
+![Versió](https://img.shields.io/badge/versi%C3%B3-0.2.0-blue)
 ![PHP](https://img.shields.io/badge/PHP-%E2%89%A5%208.0-777bb4?logo=php&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-%E2%89%A5%206.0-21759b?logo=wordpress&logoColor=white)
 ![Llicència](https://img.shields.io/badge/llic%C3%A8ncia-GPL--2.0--or--later-green)
@@ -43,7 +43,9 @@ PadelCamps cobreix tot el cicle d'un torneig de pàdel dins la web WordPress del
 | 📝 **Inscripcions** | Formulari públic configurable per torneig, welcome pack lliure, disponibilitat per franges, consentiments, llista d'espera automàtica i antispam |
 | 🗂️ **Gestió** | Llista amb filtres, accions en bloc, **pagament per jugador** (el preu és per jugador i cadascú paga el seu: pagat, pagat en part, pendent, reemborsat), resum de cobrat / pendent de cobrar (avisa quan els totals són d'un filtre), detall per parella i exportació **CSV** |
 | ✍️ **Inscripció manual** | L'organitzador dona d'alta parelles des de l'admin (telèfon, WhatsApp, al club) triant estat, pagament i idioma dels correus, i edita les dades dels jugadors |
-| 🎲 **Sorteig** | Per llavor, caps de sèrie, grups per bombos, separació de parelles del mateix club, registre d'auditoria (`draw_log`) |
+| 🎲 **Sorteig** | Per llavor, **caps de sèrie pels punts de la temporada** (suma dels dos jugadors, amb la puntuació manual de desempat), grups per bombos, separació de parelles del mateix club, registre d'auditoria (`draw_log`) |
+| 🏅 **Rànquing de temporada** | Temporades amb categories de rànquing pròpies (1a/2a/3a, B+/B/C…), punts per ronda assolida **editables**, l'organitzador tria quins tornejos puntuen, **publicació manual** dels punts per categoria (amb avís si un resultat canvia després), ajustos manuals amb motiu i rànquing públic per categoria |
+| 👥 **Jugadors** | Base de dades única identificada pel **DNI/NIE** (obligatori): cerca, fitxa amb inscripcions i punts, edició, **fusió de duplicats** amb confirmació, esborrat compatible amb l'RGPD i rànquing per temporada i categoria |
 | 🧩 **Formats** | Fase de grups + eliminatòria, tots contra tots, eliminatòria directa, quadre de consolació |
 | 🏟️ **Calendari i pistes** | Planificador de pistes × franges amb durada, descans mínim, disponibilitat i detecció de conflictes |
 | 📱 **Resultats des del mòbil** | Un *magic link* per parella (sense compte WP), confirmació per la parella rival i gestió de disputes |
@@ -86,6 +88,8 @@ En activar-lo es crea el *schema* de la base de dades (`dbDelta`) i apareix el m
 5. Comparteix els enllaços de **Resultats** amb les parelles i mostra el quadre a la web.
 6. Segueix-ho tot des del **Tauler** (PadelCamps → Tauler).
 
+**Rànquing de temporada:** a **Temporades** crea una temporada, defineix-ne les categories de rànquing i els punts per resultat; al torneig tria la temporada, marca si dona punts i enllaça cada categoria amb una de rànquing. Quan una categoria acaba, a **Resultats → Punts del rànquing** publica'n els punts. Mostra'l a la web amb `[padelcamps_ranking]`. Cal el **DNI o NIE** dels dos jugadors a cada inscripció: és el que identifica una persona a tots els tornejos.
+
 Per aplicar el mateix canvi a diverses categories (p. ex. afegir quadre de consolació a totes), marca-les a **Configuració** i fes servir **Edita en bloc les categories seleccionades**. Per eliminar un torneig amb totes les seves dades: **Resum → Zona de perill** (cal escriure el nom del torneig per confirmar).
 
 Cicle de vida d'un torneig:
@@ -102,11 +106,12 @@ draft → registration_open → registration_closed → drawn → in_progress �
 [padelcamps_registration id="N"]                       Formulari d'inscripció
 [padelcamps_draw         id="N" category="M" live="1" find="1"]   Quadres i classificacions
 [padelcamps_schedule     id="N" category="M" live="1" find="1"]   Ordre de joc (dia, hora, pista)
+[padelcamps_ranking      season="N" category="M"]      Rànquing de la temporada (sense season = l'actual)
 ```
 
 ### Blocs Gutenberg
 
-`padelcamps/registration` · `padelcamps/draw` · `padelcamps/schedule`
+`padelcamps/registration` · `padelcamps/draw` · `padelcamps/schedule` · `padelcamps/ranking`
 
 ### Pantalla TV
 
@@ -122,8 +127,9 @@ https://el-teu-site/?padelcamps_tv=ID
 | `GET` | `/tournaments/{id}/draw[?category=M]` | Quadres i classificacions (JSON) |
 | `GET` | `/tournaments/{id}/schedule[?category=]` | Ordre de joc (JSON) |
 | `GET` | `/tournaments/{id}/view?type=draw\|schedule\|tv` | HTML per al mode en directe |
+| `GET` | `/seasons/{id}/ranking[?category=M]` | Rànquing d'una categoria de la temporada (JSON) |
 
-> 🔒 L'API **mai** exposa correus, telèfons, DNI, notes ni dades de pagament. Cada torneig pot mostrar noms complets o només inicials («Anna P.»).
+> 🔒 L'API **mai** exposa correus, telèfons, DNI, club, notes ni dades de pagament. Cada torneig pot mostrar noms complets o només inicials («Anna P.»). El rànquing públic només mostra posició, nom, tornejos jugats i punts, amb **inicials per defecte** (cada temporada pot triar noms complets).
 
 ## 🏗️ Arquitectura
 
@@ -208,11 +214,12 @@ Des de l'admin, **PadelCamps → Traduccions** permet editar qualsevol cadena pe
 - [x] Tauler amb el torneig actiu i estadístiques
 - [ ] Bloqueig de transicions d'estat segons el sorteig i els partits
 - [x] Admin amb full d'estils propi (caixes amb padding, cantonades de 6px com a màxim)
-- [ ] Pàgina **Jugadors** (base de dades reutilitzable, historial, fusió de duplicats) i **rànquing de temporada** entre tornejos (per jugador; cal decidir punts i què és una temporada)
+- [x] Pàgina **Jugadors** (identitat per DNI/NIE, historial, fusió de duplicats) i **rànquing de temporada** entre tornejos, amb rànquing públic i caps de sèrie pels punts
+- [ ] Rànquing: sembrar també els tornejos que no puntuen, suggeriment automàtic de duplicats, club al rànquing públic, importar/exportar jugadors
 - [ ] Pàgina **Clubs** (clubs reutilitzables; ara placeholder al menú)
 - [ ] Opció de configuració **Activar llavors als sortejos**: permet fixar una llavor (número o text) perquè el sorteig es pugui repetir idèntic o justificar davant d'una queixa. Desactivada per defecte (sorteig aleatori pur, amb llavor interna al registre d'auditoria)
 - [ ] Comunicació: cua d'enviament (Action Scheduler), correus en HTML, plantilles per torneig, recordatori el dia abans
-- [ ] Inscripció manual: canviar la categoria d'una inscripció, DNI / welcome pack / disponibilitat
+- [ ] Inscripció manual: canviar la categoria d'una inscripció, welcome pack / disponibilitat
 - [ ] **Fase 2:** americana, canvis de partit, recordatoris, pagament (Redsys)
 - [ ] **Fase 3:** IA assistent, WhatsApp, circuits amb rànquing, SaaS multi-club
 

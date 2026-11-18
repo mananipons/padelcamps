@@ -793,7 +793,7 @@ return array(
 	'Afegeix una temporada' => 'Add a season',
 	'Encara no hi ha cap temporada. Una temporada agrupa els tornejos que compten per a un mateix rànquing.' => 'There are no seasons yet. A season groups the tournaments that count for the same ranking.',
 	'Categories de rànquing' => 'Ranking categories',
-	'%1$d amb punts de %2$d' => '%1$d with points out of %2$d',
+	'%1$d de %2$d amb punts' => '%1$d of %2$d with points',
 	'Nova temporada' => 'New season',
 	'Totes les temporades' => 'All seasons',
 	'Punts per resultat' => 'Points per result',

@@ -42,6 +42,7 @@ final class Blocks {
 				'title'           => __( 'PadelCamps: quadres i classificacions', 'padelcamps' ),
 				'description'     => __( 'Grups, classificacions i quadres d’un torneig, actualitzats en directe.', 'padelcamps' ),
 				'category'        => 'widgets',
+				'api_version'     => 3, // iframe editor: the edit component uses useBlockProps().
 				'icon'            => 'awards',
 				'editor_script'   => 'padelcamps-blocks',
 				'editor_style'    => 'padelcamps-draw-editor',
@@ -55,6 +56,7 @@ final class Blocks {
 				'title'           => __( 'PadelCamps: ordre de joc', 'padelcamps' ),
 				'description'     => __( 'Partits per dia, hora i pista, amb els resultats.', 'padelcamps' ),
 				'category'        => 'widgets',
+				'api_version'     => 3, // iframe editor: the edit component uses useBlockProps().
 				'icon'            => 'calendar-alt',
 				'editor_script'   => 'padelcamps-blocks',
 				'editor_style'    => 'padelcamps-draw-editor',
@@ -68,6 +70,7 @@ final class Blocks {
 				'title'           => __( 'PadelCamps: rànquing de la temporada', 'padelcamps' ),
 				'description'     => __( 'Rànquing de jugadors d’una temporada, per categoria.', 'padelcamps' ),
 				'category'        => 'widgets',
+				'api_version'     => 3, // iframe editor: the edit component uses useBlockProps().
 				'icon'            => 'chart-bar',
 				'editor_script'   => 'padelcamps-blocks',
 				'editor_style'    => 'padelcamps-draw-editor',
@@ -86,6 +89,7 @@ final class Blocks {
 				'title'           => __( 'PadelCamps: formulari d’inscripció', 'padelcamps' ),
 				'description'     => __( 'Formulari públic d’inscripció d’un torneig.', 'padelcamps' ),
 				'category'        => 'widgets',
+				'api_version'     => 3, // iframe editor: the edit component uses useBlockProps().
 				'icon'            => 'clipboard',
 				'editor_script'   => 'padelcamps-blocks',
 				'editor_style'    => 'padelcamps-form-editor',

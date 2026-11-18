@@ -30,7 +30,7 @@ final class PublicRanking {
 	}
 
 	/**
-	 * @param int $category ranking category id; 0 or one that is not of this season = the first one
+	 * @param int $category ranking category id; 0 or one that is not of this season = the first one that has a ranking
 	 * @return array{
 	 *   season: array{id:int, name:string, starts_on:?string, ends_on:?string},
 	 *   categories: array<int, array{id:int, name:string}>,
@@ -54,7 +54,24 @@ final class PublicRanking {
 				$chosen = $c;
 			}
 		}
-		$chosen = $chosen ?? ( $cats[0] ?? null );
+		$mode = $this->seasons->public_names( $season );
+		$rows = null;
+		if ( ! $chosen ) {
+			// Nothing (valid) asked for: open the first category that has a ranking, so a visitor
+			// does not land on an empty "1a" while "2a" has players. None has: the first one.
+			foreach ( $cats as $c ) {
+				$candidate = PublicRankingTable::rows( $this->ranking->totals( $sid, $c['id'] ), $mode );
+				if ( $candidate ) {
+					$chosen = $c;
+					$rows   = $candidate;
+					break;
+				}
+			}
+			$chosen = $chosen ?? ( $cats[0] ?? null );
+		}
+		if ( null === $rows && $chosen ) {
+			$rows = PublicRankingTable::rows( $this->ranking->totals( $sid, $chosen['id'] ), $mode );
+		}
 
 		return array(
 			'season'     => array(
@@ -65,7 +82,7 @@ final class PublicRanking {
 			),
 			'categories' => $cats,
 			'category'   => $chosen,
-			'ranking'    => $chosen ? PublicRankingTable::rows( $this->ranking->totals( $sid, $chosen['id'] ), $this->seasons->public_names( $season ) ) : array(),
+			'ranking'    => $rows ?? array(),
 		);
 	}
 }
