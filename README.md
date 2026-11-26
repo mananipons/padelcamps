@@ -183,7 +183,14 @@ Regles per contribuir:
 
 El plugin s'actualitza des de **Plugins → Actualitzacions** de WordPress, igual que un plugin de wordpress.org: consulta l'última *release* de GitHub (cada 6 h) i, si la versió és més nova, ofereix l'actualització amb un clic. Per forçar la comprovació: **Tauler → Actualitzacions → Comprova-ho de nou**.
 
-Com que el repositori és **privat**, cada web necessita un *token* de només lectura:
+El repositori és **públic**, així que **no cal cap configuració**: instal·la el ZIP i les actualitzacions arribaran soles.
+
+> ⚠️ Si tens definit un `PADELCAMPS_GITHUB_TOKEN` **invàlid o caducat**, GitHub rebutja les peticions (401) fins i tot amb el repositori públic. Treu-lo del `wp-config.php` o canvia'l per un de vàlid.
+
+<details>
+<summary>Si el repositori tornés a ser privat</summary>
+
+Cada web necessita un *token* de només lectura:
 
 1. A GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**. Repositori: només `padelcamps`. Permís: **Contents → Read-only**.
 2. Afegeix-lo al `wp-config.php` de la web, abans de la línia *That's all, stop editing!*:
@@ -192,7 +199,9 @@ Com que el repositori és **privat**, cada web necessita un *token* de només le
    define( 'PADELCAMPS_GITHUB_TOKEN', 'github_pat_xxxxxxxx' );
    ```
 
-El token només s'envia a `api.github.com`. Si el repositori es fa públic, no cal cap token. Es pot canviar de repositori amb `PADELCAMPS_GITHUB_REPO` (format `usuari/repo`).
+El token només s'envia a `api.github.com`. Es pot canviar de repositori amb `PADELCAMPS_GITHUB_REPO` (format `usuari/repo`).
+
+</details>
 
 ## 📦 Publicar una versió
 
