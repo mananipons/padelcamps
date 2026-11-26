@@ -932,4 +932,8 @@ return array(
 	'Pendent de pagament: %1$s (%2$s)' => 'Payment pending: %1$s (%2$s)',
 	'Torneigs de pàdel, sense maldecaps' => 'Padel tournaments, without the headaches',
 	'Tanca' => 'Close',
+	'Comprova actualitzacions' => 'Check for updates',
+	'PadelCamps: no s’ha pogut consultar GitHub (%s).' => 'PadelCamps: could not reach GitHub (%s).',
+	'PadelCamps: hi ha la versió %s disponible.' => 'PadelCamps: version %s is available.',
+	'PadelCamps: tens l’última versió (%s).' => 'PadelCamps: you have the latest version (%s).',
 );
