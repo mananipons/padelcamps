@@ -26,6 +26,9 @@ final class Plugin {
 
 		( new Rest\Routes() )->register();
 
+		// Updates from GitHub Releases (also runs from wp-cron, so not admin-only).
+		( new Updater() )->register();
+
 		// Public registration form (shortcode + submission handler); also needed
 		// on admin-post.php, so it is registered in every context.
 		( new Frontend\RegistrationShortcode() )->register();

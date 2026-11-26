@@ -179,6 +179,21 @@ Regles per contribuir:
 - Res de `src/Engine/` ni `I18n/Catalog.php` pot cridar funcions de WordPress.
 - Les classes amb WP comencen amb `defined( 'ABSPATH' ) || exit;`.
 
+## 🔄 Actualitzacions des de WordPress
+
+El plugin s'actualitza des de **Plugins → Actualitzacions** de WordPress, igual que un plugin de wordpress.org: consulta l'última *release* de GitHub (cada 6 h) i, si la versió és més nova, ofereix l'actualització amb un clic. Per forçar la comprovació: **Tauler → Actualitzacions → Comprova-ho de nou**.
+
+Com que el repositori és **privat**, cada web necessita un *token* de només lectura:
+
+1. A GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**. Repositori: només `padelcamps`. Permís: **Contents → Read-only**.
+2. Afegeix-lo al `wp-config.php` de la web, abans de la línia *That's all, stop editing!*:
+
+   ```php
+   define( 'PADELCAMPS_GITHUB_TOKEN', 'github_pat_xxxxxxxx' );
+   ```
+
+El token només s'envia a `api.github.com`. Si el repositori es fa públic, no cal cap token. Es pot canviar de repositori amb `PADELCAMPS_GITHUB_REPO` (format `usuari/repo`).
+
 ## 📦 Publicar una versió
 
 El ZIP instal·lable es genera sol amb GitHub Actions ([release.yml](.github/workflows/release.yml)):
