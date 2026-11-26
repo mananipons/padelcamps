@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       PadelCamps
  * Description:       Gestió de campionats de pàdel: inscripcions, sortejos, quadres, pistes i horaris, i resultats en directe.
- * Version:           0.2.0
+ * Version:           0.2.1
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Finismedia
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PADELCAMPS_VERSION', '0.2.0' );
+define( 'PADELCAMPS_VERSION', '0.2.1' );
 define( 'PADELCAMPS_FILE', __FILE__ );
 define( 'PADELCAMPS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'PADELCAMPS_URL', plugin_dir_url( __FILE__ ) );
