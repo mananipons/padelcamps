@@ -930,4 +930,6 @@ return array(
 	'Encara falta el pagament de %1$s (%2$s).' => 'Todavía falta el pago de %1$s (%2$s).',
 	'La inscripció de la parella ja està pagada. Gràcies!' => 'La inscripción de la pareja ya está pagada. ¡Gracias!',
 	'Pendent de pagament: %1$s (%2$s)' => 'Pendiente de pago: %1$s (%2$s)',
+	'Torneigs de pàdel, sense maldecaps' => 'Torneos de pádel, sin quebraderos de cabeza',
+	'Tanca' => 'Cerrar',
 );

@@ -26,6 +26,46 @@ final class Dashboard {
 		$this->stats       = new StatsRepository();
 	}
 
+	private const BRAND_META = 'padelcamps_brand_dismissed';
+
+	/** Accent-coloured brand box above the title; closing it is remembered per user. */
+	private static function brand_banner(): void {
+		if ( get_user_meta( get_current_user_id(), self::BRAND_META, true ) ) {
+			return;
+		}
+		echo '<section class="pc-brand" id="pc-brand">';
+		echo '<h2 class="pc-brand__name">PadelCamps</h2>';
+		echo '<p class="pc-brand__claim">' . esc_html__( 'Torneigs de pàdel, sense maldecaps', 'padelcamps' ) . '</p>';
+		echo '<button type="button" class="pc-brand__close" aria-label="' . esc_attr__( 'Tanca', 'padelcamps' ) . '">&times;</button>';
+		echo '</section>';
+		?>
+		<script>
+		( function () {
+			var box = document.getElementById( 'pc-brand' );
+			var btn = box && box.querySelector( '.pc-brand__close' );
+			if ( ! btn ) { return; }
+			btn.addEventListener( 'click', function () {
+				box.parentNode.removeChild( box );
+				var data = new FormData();
+				data.append( 'action', 'padelcamps_dismiss_brand' );
+				data.append( 'nonce', <?php echo wp_json_encode( wp_create_nonce( 'padelcamps_brand' ) ); ?> );
+				fetch( window.ajaxurl, { method: 'POST', credentials: 'same-origin', body: data } );
+			} );
+		}() );
+		</script>
+		<?php
+	}
+
+	/** AJAX: remember that this user closed the brand box. */
+	public static function ajax_dismiss_brand(): void {
+		check_ajax_referer( 'padelcamps_brand', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		update_user_meta( get_current_user_id(), self::BRAND_META, 1 );
+		wp_send_json_success();
+	}
+
 	private static function money( float $amount ): string {
 		return number_format_i18n( $amount, 0 === (int) round( fmod( $amount * 100, 100 ) ) ? 0 : 2 ) . ' €';
 	}
@@ -54,7 +94,9 @@ final class Dashboard {
 			return;
 		}
 		$all = $this->tournaments->all();
-		echo '<div class="wrap pc-wrap"><h1 class="wp-heading-inline">' . esc_html__( 'Tauler', 'padelcamps' ) . '</h1>';
+		echo '<div class="wrap pc-wrap">';
+		self::brand_banner();
+		echo '<h1 class="wp-heading-inline">' . esc_html__( 'Tauler', 'padelcamps' ) . '</h1>';
 		echo '<hr class="wp-header-end">';
 
 		if ( ! $all ) {

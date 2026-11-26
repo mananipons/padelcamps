@@ -649,6 +649,59 @@
 
 /* ---------- Dashboard ------------------------------------------------------ */
 
+.padelcamps-admin .pc-brand {
+	position: relative;
+	margin: 18px 0 0;
+	padding: 22px 64px 22px var(--pc-pad);
+	background: var(--pc-accent);
+	color: #fff;
+	border-radius: var(--pc-radius);
+}
+
+.padelcamps-admin .pc-brand__name {
+	margin: 0;
+	padding: 0;
+	color: inherit;
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1.15;
+	letter-spacing: -.01em;
+}
+
+.padelcamps-admin .pc-brand__claim {
+	margin: 4px 0 0;
+	color: inherit;
+	font-size: 15px;
+	opacity: .9;
+}
+
+.padelcamps-admin .pc-brand__close {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	border-radius: var(--pc-radius);
+	color: #fff;
+	font-size: 24px;
+	line-height: 1;
+	cursor: pointer;
+	opacity: .85;
+}
+
+.padelcamps-admin .pc-brand__close:hover {
+	background: rgba(255, 255, 255, .18);
+	opacity: 1;
+}
+
+.padelcamps-admin .pc-brand__close:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 1px;
+}
+
 .padelcamps-admin .pc-dash-switch {
 	display: flex;
 	align-items: center;

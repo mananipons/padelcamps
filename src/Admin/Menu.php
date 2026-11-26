@@ -30,6 +30,7 @@ final class Menu {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'admin_body_class', array( $this, 'body_class' ) );
+		add_action( 'wp_ajax_padelcamps_dismiss_brand', array( Dashboard::class, 'ajax_dismiss_brand' ) );
 	}
 
 	/** True on any PadelCamps admin screen (dashboard, tournaments, registrations…). */
